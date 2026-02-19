@@ -1337,8 +1337,16 @@ body {
   flex: 1;
   padding: 24px;
   width: 100%;
+}
+
+.dashboard-container.trader-theme .main-content-area {
   background: #0B0F17;
 }
+
+.dashboard-container.investor-theme .main-content-area {
+  background: transparent;
+}
+
 
 .fade-in {
   animation: fadeIn 0.8s ease-out;
@@ -1929,6 +1937,14 @@ body {
   border-color: rgba(61, 178, 107, 0.4);
 }
 
+/* Prevent layout shift in right column */
+.dashboard-container.trader-theme .trader-right-col .bento-card:hover {
+  transform: none;
+  box-shadow: 0 0 20px rgba(61, 178, 107, 0.12);
+  border-color: rgba(61, 178, 107, 0.4);
+}
+
+
 /* Attractive Card Headers */
 .dashboard-container.trader-theme .card-header {
   position: relative;
@@ -2071,4 +2087,308 @@ body {
 .dashboard-container.trader-theme .space-y-2\.5>*:nth-child(6),
 .dashboard-container.trader-theme .space-y-3>*:nth-child(6) {
   animation-delay: 0.3s;
+}
+
+/* ============================= */
+/* NEW TRADINGVIEW-STYLE LAYOUT  */
+/* ============================= */
+
+/* TOP MARKET OVERVIEW STRIP */
+.dashboard-container.trader-theme .trader-top-strip {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  height: 160px;
+}
+
+.dashboard-container.trader-theme .top-strip-card {
+  background: var(--bg-section);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  min-width: 0;
+  transition: border-color 0.2s ease;
+}
+
+.dashboard-container.trader-theme .top-strip-card:hover {
+  border-color: rgba(61, 178, 107, 0.35);
+}
+
+/* MAIN CONTENT GRID (Chart + Right Sidebar) */
+.dashboard-container.trader-theme .trader-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  gap: 10px;
+  align-items: start;
+}
+
+/* LEFT COLUMN */
+.dashboard-container.trader-theme .trader-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* RIGHT COLUMN */
+.dashboard-container.trader-theme .trader-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Workspace in new layout */
+.dashboard-container.trader-theme .trader-left-col .bento-workspace {
+  grid-column: unset;
+  grid-row: unset;
+  min-height: 460px;
+  max-height: 520px;
+}
+
+/* BOTTOM PANEL */
+.dashboard-container.trader-theme .trader-bottom-panel {
+  background: var(--bg-section);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.dashboard-container.trader-theme .trader-bottom-panel:hover {
+  border-color: rgba(61, 178, 107, 0.25);
+}
+
+.dashboard-container.trader-theme .bottom-panel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0 4px;
+}
+
+.dashboard-container.trader-theme .bottom-tab {
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5d606b;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.dashboard-container.trader-theme .bottom-tab:hover {
+  color: #9194a2;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dashboard-container.trader-theme .bottom-tab.active {
+  color: #3db26b;
+  border-bottom-color: #3db26b;
+  background: rgba(61, 178, 107, 0.05);
+}
+
+.dashboard-container.trader-theme .bottom-tab-toggle {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #5d606b;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 4px;
+  white-space: nowrap;
+}
+
+.dashboard-container.trader-theme .bottom-tab-toggle:hover {
+  color: #9194a2;
+  border-color: #9194a2;
+}
+
+.dashboard-container.trader-theme .bottom-panel-body {
+  height: 220px;
+  overflow: hidden;
+}
+
+/* Right column bento cards override */
+.dashboard-container.trader-theme .trader-right-col .bento-card {
+  grid-column: unset;
+  grid-row: unset;
+  min-height: unset;
+  max-height: unset;
+}
+
+.dashboard-container.trader-theme .trader-right-col .bento-watchlist {
+  grid-column: unset;
+  grid-row: unset;
+}
+
+.dashboard-container.trader-theme .trader-right-col .bento-orderbook {
+  grid-column: unset;
+  grid-row: unset;
+  min-height: unset;
+  max-height: unset;
+}
+
+.dashboard-container.trader-theme .trader-right-col .bento-trade {
+  grid-column: unset;
+  grid-row: unset;
+  min-height: unset;
+  max-height: unset;
+}
+
+.dashboard-container.trader-theme .trader-right-col .bento-alerts {
+  grid-column: unset;
+  grid-row: unset;
+  min-height: unset;
+  max-height: unset;
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .dashboard-container.trader-theme .trader-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-container.trader-theme .trader-right-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .dashboard-container.trader-theme .trader-top-strip {
+    height: auto;
+    flex-direction: column;
+  }
+
+  .dashboard-container.trader-theme .top-strip-card {
+    height: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container.trader-theme .trader-right-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================= */
+/* BENTO GRID BOTTOM ROW CARDS   */
+/* ============================= */
+
+/* Quick Trade — spans full 2 columns */
+.dashboard-container.trader-theme .bento-quick-trade {
+  grid-column: 1 / -1;
+  min-height: 180px;
+}
+
+/* Bottom row: Screeners, F&O, News — each span 4 cols in a 12-col subgrid */
+.dashboard-container.trader-theme .bento-screeners {
+  grid-column: 1;
+  min-height: 240px;
+}
+
+.dashboard-container.trader-theme .bento-fo-panel {
+  grid-column: 2;
+  min-height: 240px;
+}
+
+.dashboard-container.trader-theme .bento-news-panel {
+  grid-column: 1 / -1;
+  min-height: 200px;
+}
+
+/* Override the 2-col bento grid to handle bottom rows */
+.dashboard-container.trader-theme .trader-bento-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: auto;
+  gap: 12px;
+}
+
+/* Workspace stays in col 1 */
+.dashboard-container.trader-theme .bento-workspace {
+  grid-column: 1;
+  min-height: 500px;
+  max-height: 580px;
+}
+
+/* Watchlist stays in col 2 */
+.dashboard-container.trader-theme .bento-watchlist {
+  grid-column: 2;
+  min-height: 500px;
+  max-height: 580px;
+}
+
+/* Signal Engine col 1 */
+.dashboard-container.trader-theme .bento-positions {
+  grid-column: 1;
+  min-height: 280px;
+  max-height: 320px;
+}
+
+/* Trend Matrix col 2 */
+.dashboard-container.trader-theme .bento-orderbook {
+  grid-column: 2;
+  min-height: 280px;
+  max-height: 320px;
+}
+
+/* Catalyst col 1 */
+.dashboard-container.trader-theme .bento-alerts {
+  grid-column: 1;
+  min-height: 240px;
+  max-height: 280px;
+}
+
+/* Instrument Summary col 2 */
+.dashboard-container.trader-theme .bento-trade {
+  grid-column: 2;
+  min-height: 240px;
+  max-height: 280px;
+}
+
+/* Quick Trade spans both columns */
+.dashboard-container.trader-theme .bento-quick-trade {
+  grid-column: 1 / -1;
+}
+
+/* Bottom row: Screeners and F&O side by side */
+.dashboard-container.trader-theme .bento-screeners {
+  grid-column: 1;
+}
+
+.dashboard-container.trader-theme .bento-fo-panel {
+  grid-column: 2;
+}
+
+/* News spans full width */
+.dashboard-container.trader-theme .bento-news-panel {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1280px) {
+  .dashboard-container.trader-theme .trader-bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-container.trader-theme .bento-workspace,
+  .dashboard-container.trader-theme .bento-watchlist,
+  .dashboard-container.trader-theme .bento-positions,
+  .dashboard-container.trader-theme .bento-orderbook,
+  .dashboard-container.trader-theme .bento-alerts,
+  .dashboard-container.trader-theme .bento-trade,
+  .dashboard-container.trader-theme .bento-screeners,
+  .dashboard-container.trader-theme .bento-fo-panel {
+    grid-column: 1;
+    max-height: none;
+  }
 }

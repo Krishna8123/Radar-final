@@ -1017,80 +1017,135 @@ const MultiChartGrid = ({ className, onOpenChart, chartType, timeframe = "15m", 
 
 const AdvancedWatchlist = () => (
   <div className="trader-card flex flex-col h-full bg-transparent border border-white/10">
-    <div className="card-header flex justify-between items-center mb-2 px-3 py-2 bg-white/5 border-b border-white/10">
-      <h3 className="text-[#9194a2] font-bold text-sm tracking-wider">
+    <div className="card-header flex justify-between items-center mb-0 px-3 py-2 bg-white/5 border-b border-white/10">
+      <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">
         ADVANCED WATCHLIST
       </h3>
-      <div className="flex gap-2 text-[#9194a2]">
+      <div className="flex gap-2 text-[#9194a2] items-center">
         <div className="bg-[#3db26b]/10 text-[#3db26b] px-2 py-0.5 rounded text-[10px] font-bold border border-[#3db26b]/20 flex items-center gap-1">
           <span className="w-1.5 h-1.5 bg-[#3db26b] rounded-full animate-pulse"></span>
           Live
         </div>
-        <Search size={14} className="cursor-pointer hover:text-white" />
+        <Search size={13} className="cursor-pointer hover:text-white" />
       </div>
     </div>
-    <div className="watchlist-body flex-1 overflow-y-auto overflow-x-auto custom-scrollbar">
+    <div className="watchlist-body flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
       <table className="w-full text-left border-collapse">
-        <thead className="bg-white/5">
-          <tr className="text-xs text-[#5d606b] font-bold uppercase tracking-wider">
-            <th className="py-3 pl-3">Symbol</th>
-            <th className="py-3 text-center">Trend</th>
-            <th className="py-3 text-right">LTP</th>
-            <th className="py-3 text-right">%</th>
-            <th className="py-3 text-right pr-3">Vol</th>
+        <thead className="sticky top-0 z-10 bg-[#0f1520]">
+          <tr className="text-[10px] text-[#5d606b] font-bold uppercase tracking-wider border-b border-white/10">
+            <th className="py-2 pl-3 w-[22%]">Symbol</th>
+            <th className="py-2 text-center w-[18%]">Trend</th>
+            <th className="py-2 text-right w-[18%]">LTP</th>
+            <th className="py-2 text-right w-[12%]">Chg%</th>
+            <th className="py-2 text-center w-[12%]">Vol</th>
+            <th className="py-2 text-center pr-2 w-[18%]">Outlook</th>
           </tr>
         </thead>
-        <tbody className="text-sm">
+        <tbody className="text-xs">
           {[
-            { sym: "TCS", ltp: "3,450.00", chg: "+1.2%", data: priceData, vol: 85 },
-            { sym: "INFY", ltp: "1,420.50", chg: "-0.5%", data: [...priceData].reverse(), vol: 45 },
-            { sym: "BANKNIFTY", ltp: "44,200", chg: "+0.8%", data: priceData, vol: 90 },
-            { sym: "RELIANCE", ltp: "2,550.00", chg: "+0.3%", data: priceData, vol: 30 },
-            { sym: "HDFCBANK", ltp: "1,650.00", chg: "+0.6%", data: priceData, vol: 60 },
-            { sym: "ADANIENT", ltp: "2,400.00", chg: "-1.2%", data: [...priceData].reverse(), vol: 70 },
-            { sym: "SBIN", ltp: "580.00", chg: "+0.2%", data: priceData, vol: 20 },
-            { sym: "WIPRO", ltp: "410.00", chg: "-0.1%", data: priceData, vol: 25 },
-            { sym: "ICICIBANK", ltp: "950.00", chg: "+0.4%", data: priceData, vol: 55 },
-            { sym: "LT", ltp: "2,890.00", chg: "+1.5%", data: priceData, vol: 75 },
-            { sym: "AXISBANK", ltp: "980.00", chg: "-0.3%", data: [...priceData].reverse(), vol: 40 },
-          ].map((row, i) => (
-            <tr
-              key={i}
-              className="border-b border-white/10/50 hover:bg-white/10 transition-colors group cursor-pointer"
-            >
-              <td className="py-2.5 pl-3 font-bold text-[#e2e8f0] group-hover:text-white">
-                {row.sym}
-              </td>
-              <td className="py-2.5 flex justify-center">
-                <Sparkline
-                  data={row.data}
-                  color={row.chg.includes("+") ? "#3db26b" : "#ed5750"}
-                />
-              </td>
-              <td className="py-2.5 text-right text-[#e2e8f0] font-mono">
-                {row.ltp}
-              </td>
-              <td
-                className={`py-2.5 text-right ${row.chg.includes("+") ? "text-[#3db26b]" : "text-[#ed5750]"
-                  } font-mono`}
+            { sym: "TCS", ltp: "3,450", chg: "+1.2%", vol: 85, outlook: "Breakout", outColor: "#3db26b", data: priceData },
+            { sym: "INFY", ltp: "1,420", chg: "-0.5%", vol: 45, outlook: "Reversal", outColor: "#ed5750", data: [...priceData].reverse() },
+            { sym: "BANKNIFTY", ltp: "44,200", chg: "+0.8%", vol: 90, outlook: "Momentum", outColor: "#3db26b", data: priceData },
+            { sym: "RELIANCE", ltp: "2,550", chg: "+0.3%", vol: 30, outlook: "Hold", outColor: "#f0b429", data: priceData },
+            { sym: "HDFCBANK", ltp: "1,650", chg: "+0.6%", vol: 60, outlook: "Breakout", outColor: "#3db26b", data: priceData },
+            { sym: "ADANIENT", ltp: "2,400", chg: "-1.2%", vol: 70, outlook: "Sell", outColor: "#ed5750", data: [...priceData].reverse() },
+            { sym: "SBIN", ltp: "580", chg: "+0.2%", vol: 20, outlook: "Sideways", outColor: "#8b909a", data: priceData },
+            { sym: "WIPRO", ltp: "410", chg: "-0.1%", vol: 25, outlook: "Watch", outColor: "#f0b429", data: [...priceData].reverse() },
+            { sym: "ICICIBANK", ltp: "950", chg: "+0.4%", vol: 55, outlook: "Momentum", outColor: "#3db26b", data: priceData },
+            { sym: "LT", ltp: "2,890", chg: "+1.5%", vol: 75, outlook: "Breakout", outColor: "#3db26b", data: priceData },
+            { sym: "AXISBANK", ltp: "980", chg: "-0.3%", vol: 40, outlook: "Reversal", outColor: "#ed5750", data: [...priceData].reverse() },
+          ].map((row, i) => {
+            const isPos = row.chg.includes("+");
+            return (
+              <tr
+                key={i}
+                className="border-b border-white/5 hover:bg-white/5 transition-colors group cursor-pointer"
               >
-                {row.chg}
-              </td>
-              <td className="py-2.5 text-right pr-3">
-                <div className="w-16 h-1.5 bg-transparent ml-auto rounded overflow-hidden">
-                  <div
-                    style={{ width: `${row.vol}%` }}
-                    className="h-full bg-[#5d606b]"
-                  ></div>
-                </div>
-              </td>
-            </tr>
-          ))}
+                {/* Symbol */}
+                <td className="py-2 pl-3 font-bold text-[#d1d4dc] group-hover:text-white text-[11px]">
+                  {row.sym}
+                </td>
+
+                {/* Sparkline Trend */}
+                <td className="py-2">
+                  <div className="flex justify-center">
+                    <svg width="52" height="22" viewBox="0 0 52 22">
+                      {(() => {
+                        const pts = row.data.slice(0, 12);
+                        const vals = pts.map(p => p.price);
+                        const min = Math.min(...vals);
+                        const max = Math.max(...vals);
+                        const range = max - min || 1;
+                        const points = vals.map((v, idx) =>
+                          `${(idx / (vals.length - 1)) * 50 + 1},${20 - ((v - min) / range) * 18 + 1}`
+                        ).join(" ");
+                        const color = isPos ? "#3db26b" : "#ed5750";
+                        return (
+                          <>
+                            <polyline
+                              points={points}
+                              fill="none"
+                              stroke={color}
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            {/* Last dot */}
+                            {(() => {
+                              const last = points.split(" ").pop().split(",");
+                              return <circle cx={last[0]} cy={last[1]} r="2" fill={color} />;
+                            })()}
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </div>
+                </td>
+
+                {/* LTP */}
+                <td className="py-2 text-right text-[#e2e8f0] font-mono text-[11px] pr-1">
+                  {row.ltp}
+                </td>
+
+                {/* Change % */}
+                <td className={`py-2 text-right font-mono text-[11px] font-bold ${isPos ? "text-[#3db26b]" : "text-[#ed5750]"}`}>
+                  {row.chg}
+                </td>
+
+                {/* Volume bar */}
+                <td className="py-2 px-2">
+                  <div className="w-full h-1.5 bg-white/5 rounded overflow-hidden">
+                    <div
+                      style={{ width: `${row.vol}%`, background: isPos ? "#3db26b" : "#ed5750", opacity: 0.7 }}
+                      className="h-full rounded"
+                    />
+                  </div>
+                  <div className="text-[9px] text-[#5d606b] text-center mt-0.5">{row.vol}%</div>
+                </td>
+
+                {/* Outlook badge */}
+                <td className="py-2 pr-2 text-center">
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                    style={{
+                      color: row.outColor,
+                      background: `${row.outColor}18`,
+                      border: `1px solid ${row.outColor}40`,
+                    }}
+                  >
+                    {row.outlook}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   </div>
 );
+
+
 
 const KeyLevelsPanel = () => (
   <div className="trader-card flex flex-col h-full bg-gradient-to-br from-[#131722] to-[#1a1e2e] border border-white/10">
@@ -1125,180 +1180,398 @@ const KeyLevelsPanel = () => (
 );
 
 const TrendStrengthPanel = () => (
-  <div className="trader-card flex flex-col h-full bg-gradient-to-br from-[#131722] to-[#1a1e2e] border border-white/10">
-    <div className="card-header flex justify-between items-center mb-3 px-3 py-2.5 bg-gradient-to-r from-[#2a2e39] to-[#1f232e] border-b border-white/10">
+  <div className="trader-card flex flex-col h-full border border-white/10" style={{ background: '#0d1117' }}>
+    {/* Header */}
+    <div className="card-header flex justify-between items-center px-3 py-2.5 border-b border-white/10" style={{ background: '#161b27' }}>
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-1.5 bg-[#3db26b] rounded-full animate-pulse"></div>
-        <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">
-          TREND MATRIX
-        </h3>
+        <div>
+          <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">TREND MATRIX</h3>
+          <p className="text-[9px] text-[#5d606b] mt-0.5">Multi-timeframe trend alignment per instrument</p>
+        </div>
       </div>
-      <span className="text-[9px] text-[#3db26b] bg-[#3db26b]/10 px-2 py-1 rounded border border-[#3db26b]/20">LIVE</span>
+      <span className="text-[9px] text-[#3db26b] bg-[#3db26b]/10 px-2 py-0.5 rounded border border-[#3db26b]/20 font-bold">● LIVE</span>
     </div>
-    <div className="flex-1 px-3 pb-3 overflow-x-auto">
-      <table className="w-full text-xs">
+
+    {/* Table */}
+    <div className="flex-1 px-2 pb-2 pt-1 overflow-y-auto custom-scrollbar" style={{ scrollbarColor: '#2a2e39 transparent' }}>
+      <table className="w-full text-xs border-collapse">
+        {/* Column Headers */}
         <thead>
-          <tr className="text-[10px] text-[#5d606b] uppercase tracking-wider bg-white/5">
-            <th className="py-2.5 px-2 text-left rounded-l"></th>
-            <th className="py-2.5 text-center">5M</th>
-            <th className="py-2.5 text-center">15M</th>
-            <th className="py-2.5 text-center">1H</th>
-            <th className="py-2.5 text-center">4H</th>
-            <th className="py-2.5 text-center rounded-r">1D</th>
+          <tr style={{ background: '#1a1f2e' }}>
+            <th className="py-2 px-2 text-left text-[9px] text-[#5d606b] uppercase tracking-wider font-semibold rounded-l w-[28%]">Symbol</th>
+            <th className="py-2 text-center text-[9px] text-[#5d606b] uppercase tracking-wider font-semibold">5M</th>
+            <th className="py-2 text-center text-[9px] text-[#5d606b] uppercase tracking-wider font-semibold">15M</th>
+            <th className="py-2 text-center text-[9px] text-[#5d606b] uppercase tracking-wider font-semibold">1H</th>
+            <th className="py-2 text-center text-[9px] text-[#5d606b] uppercase tracking-wider font-semibold">4H</th>
+            <th className="py-2 text-center text-[9px] text-[#5d606b] uppercase tracking-wider font-semibold rounded-r">1D</th>
           </tr>
         </thead>
         <tbody>
           {[
-            { sym: "NIFTY", d: ["↑", "↑", "↑", "→", "↓"] },
-            { sym: "BANK", d: ["↑", "↓", "↑", "↑", "↑"] },
-            { sym: "FINANCE", d: ["↑", "↑", "↑", "↑", "→"] },
-          ].map((row, idx) => (
-            <tr key={idx} className="border-t border-white/10 hover:bg-white/5 transition-colors">
-              <td className="py-3 px-2 text-[#d1d4dc] font-bold">{row.sym}</td>
-              {row.d.map((dir, i) => (
-                <td key={i} className="py-3 text-center">
-                  <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-base ${dir === "↑" ? "bg-[#3db26b]/20 text-[#3db26b] shadow-[0_0_10px_rgba(61,178,107,0.3)]" :
-                    dir === "↓" ? "bg-[#ed5750]/20 text-[#ed5750] shadow-[0_0_10px_rgba(237,87,80,0.3)]" :
-                      "bg-white/10 text-[#8b909a]"
-                    }`}>
-                    {dir}
-                  </span>
+            { sym: "NIFTY 50", d: ["↑", "↑", "↑", "→", "↓"], score: 60 },
+            { sym: "BANKNIFTY", d: ["↑", "↓", "↑", "↑", "↑"], score: 80 },
+            { sym: "FINNIFTY", d: ["↑", "↑", "↑", "↑", "→"], score: 85 },
+            { sym: "RELIANCE", d: ["→", "↑", "↑", "↑", "↑"], score: 80 },
+            { sym: "INFY", d: ["↑", "↑", "↓", "→", "↑"], score: 60 },
+            { sym: "HDFCBANK", d: ["↓", "↓", "↑", "↑", "↑"], score: 60 },
+            { sym: "ADANIENT", d: ["↓", "↓", "↓", "↓", "→"], score: 20 },
+            { sym: "TCS", d: ["↑", "↑", "↑", "↑", "↑"], score: 100 },
+          ].map((row, idx) => {
+            const ups = row.d.filter(x => x === "↑").length;
+            const downs = row.d.filter(x => x === "↓").length;
+            const bias = ups > downs ? "#3db26b" : downs > ups ? "#ed5750" : "#8b909a";
+            return (
+              <tr key={idx} className="border-b transition-colors cursor-pointer" style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#1a1f2e'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                {/* Symbol */}
+                <td className="py-2.5 px-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: bias }}></div>
+                    <span className="text-white font-bold text-[10px] truncate">{row.sym}</span>
+                  </div>
                 </td>
-              ))}
-            </tr>
-          ))}
+                {/* Timeframe cells */}
+                {row.d.map((dir, i) => (
+                  <td key={i} className="py-2.5 text-center">
+                    <span
+                      className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold"
+                      style={{
+                        background: dir === "↑" ? "rgba(61,178,107,0.2)" : dir === "↓" ? "rgba(237,87,80,0.2)" : "rgba(255,255,255,0.08)",
+                        color: dir === "↑" ? "#3db26b" : dir === "↓" ? "#ed5750" : "#8b909a",
+                        boxShadow: dir === "↑" ? "0 0 8px rgba(61,178,107,0.25)" : dir === "↓" ? "0 0 8px rgba(237,87,80,0.25)" : "none",
+                      }}
+                    >
+                      {dir}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
+
+    {/* Legend + Market Bias Footer */}
+    <div className="px-3 py-2 border-t border-white/10 flex items-center justify-between" style={{ background: '#161b27' }}>
+      <div className="flex items-center gap-3 text-[9px]">
+        <div className="flex items-center gap-1">
+          <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[9px] font-bold" style={{ background: 'rgba(61,178,107,0.2)', color: '#3db26b' }}>↑</span>
+          <span className="text-[#5d606b]">Bullish</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[9px] font-bold" style={{ background: 'rgba(237,87,80,0.2)', color: '#ed5750' }}>↓</span>
+          <span className="text-[#5d606b]">Bearish</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[9px] font-bold" style={{ background: 'rgba(255,255,255,0.08)', color: '#8b909a' }}>→</span>
+          <span className="text-[#5d606b]">Neutral</span>
+        </div>
+      </div>
+      <div className="text-[9px] font-bold" style={{ color: '#3db26b' }}>
+        Market Bias: <span>Bullish</span>
+      </div>
+    </div>
   </div>
 );
 
+
+
 const InstrumentSummaryPanel = () => (
-  <div className="trader-card flex flex-col h-full bg-gradient-to-br from-[#131722] to-[#1a1e2e] border border-white/10">
-    <div className="card-header flex justify-between items-center mb-3 px-3 py-2.5 bg-gradient-to-r from-[#2a2e39] to-[#1f232e] border-b border-white/10">
+  <div className="trader-card flex flex-col h-full border border-white/10" style={{ background: '#0d1117' }}>
+    {/* Header */}
+    <div className="card-header flex justify-between items-center px-3 py-2.5 border-b border-white/10" style={{ background: '#161b27' }}>
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-1.5 bg-[#3db26b] rounded-full animate-pulse"></div>
-        <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">
-          INSTRUMENT SUMMARY
-        </h3>
+        <div>
+          <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">INSTRUMENT SUMMARY</h3>
+          <p className="text-[9px] text-[#5d606b] mt-0.5">Technical health of NIFTY 50</p>
+        </div>
       </div>
-      <span className="text-[10px] text-[#5d606b] bg-white/5 px-2 py-1 rounded">NIFTY 50</span>
+      <div className="flex flex-col items-center">
+        <span className="text-[18px] font-black" style={{ color: '#3db26b' }}>82</span>
+        <span className="text-[8px] text-[#5d606b] uppercase tracking-wider">Score</span>
+      </div>
     </div>
-    <div className="flex-1 px-3 pb-3 space-y-3">
+
+    {/* Metrics */}
+    <div className="flex-1 px-3 pb-3 pt-2 space-y-2 overflow-y-auto custom-scrollbar">
       {[
-        { label: "Trend", value: "Bullish", color: "text-[#3db26b]", icon: "📈", progress: 85 },
-        { label: "Momentum", value: "Strong", color: "text-[#3db26b]", icon: "⚡", progress: 90 },
-        { label: "Volume", value: "Above Avg", color: "text-[#3db26b]", icon: "📊", progress: 75 },
-        { label: "Volatility", value: "Moderate", color: "text-[#8b909a]", icon: "🌊", progress: 50 },
-        { label: "Strength Score", value: "82/100", color: "text-[#d1d4dc]", icon: "💪", progress: 82 },
+        { label: "Trend", value: "Bullish", color: "#3db26b", icon: "📈", progress: 85, sub: "Above all key EMAs" },
+        { label: "Momentum", value: "Strong", color: "#3db26b", icon: "⚡", progress: 90, sub: "RSI 67 · MACD +ve" },
+        { label: "Volume", value: "Above Avg", color: "#3db26b", icon: "📊", progress: 75, sub: "2.1x 20-day average" },
+        { label: "Volatility", value: "Moderate", color: "#f0b429", icon: "🌊", progress: 50, sub: "VIX 14.2 · Normal" },
+        { label: "Breadth", value: "Positive", color: "#3db26b", icon: "🧭", progress: 70, sub: "68% stocks advancing" },
+        { label: "Strength Score", value: "82 / 100", color: "#d1d4dc", icon: "💪", progress: 82, sub: "Strong bull setup" },
       ].map((row, idx) => (
-        <div key={idx} className="bg-white/5 rounded-lg p-2.5 hover:bg-white/10 transition-all">
-          <div className="flex justify-between items-center mb-2">
+        <div key={idx} className="rounded-lg p-2.5 transition-all" style={{ background: '#1a1f2e', border: '1px solid rgba(255,255,255,0.07)' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1f2540'}
+          onMouseLeave={e => e.currentTarget.style.background = '#1a1f2e'}
+        >
+          <div className="flex justify-between items-center mb-1.5">
             <div className="flex items-center gap-2">
               <span className="text-sm">{row.icon}</span>
-              <span className="text-[#8b909a] uppercase text-[10px] tracking-wider font-semibold">{row.label}</span>
+              <div>
+                <span className="text-[#9ca3af] uppercase text-[9px] tracking-wider font-semibold">{row.label}</span>
+                <div className="text-[9px] text-[#4b5563] mt-0.5">{row.sub}</div>
+              </div>
             </div>
-            <span className={`font-bold text-xs ${row.color}`}>{row.value}</span>
+            <span className="font-bold text-[11px] font-mono" style={{ color: row.color }}>{row.value}</span>
           </div>
-          <div className="w-full h-1.5 bg-[#2a2e39] rounded-full overflow-hidden">
+          <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <div
-              className={`h-full rounded-full transition-all duration-500 ${row.progress >= 75 ? 'bg-gradient-to-r from-[#3db26b] to-[#5dd68d]' :
-                row.progress >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                  'bg-gradient-to-r from-[#8b909a] to-[#a0a5b1]'
-                }`}
-              style={{ width: `${row.progress}%` }}
-            ></div>
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${row.progress}%`,
+                background: row.progress >= 75
+                  ? 'linear-gradient(90deg, #3db26b, #5dd68d)'
+                  : row.progress >= 50
+                    ? 'linear-gradient(90deg, #d97706, #f0b429)'
+                    : 'linear-gradient(90deg, #6b7280, #9ca3af)',
+                boxShadow: row.progress >= 75 ? '0 0 6px rgba(61,178,107,0.4)' : 'none',
+              }}
+            />
           </div>
         </div>
       ))}
     </div>
+
+    {/* Footer */}
+    <div className="px-3 py-2 border-t border-white/10 flex justify-between items-center" style={{ background: '#161b27' }}>
+      <span className="text-[9px] text-[#5d606b]">Updated: 15:49 IST</span>
+      <span className="text-[9px] font-bold" style={{ color: '#3db26b' }}>Overall: Bullish ↑</span>
+    </div>
   </div>
 );
 
+
 const SignalEnginePanel = () => (
-  <div className="trader-card flex flex-col h-full bg-gradient-to-br from-[#131722] to-[#1a1e2e] border border-white/10">
-    <div className="card-header flex justify-between items-center mb-3 px-3 py-2.5 bg-gradient-to-r from-[#2a2e39] to-[#1f232e] border-b border-white/10">
+  <div className="trader-card flex flex-col h-full border border-white/10" style={{ background: '#0d1117' }}>
+    {/* Header */}
+    <div className="card-header flex justify-between items-center px-3 py-2.5 border-b border-white/10" style={{ background: '#161b27' }}>
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-1.5 bg-[#3db26b] rounded-full animate-pulse"></div>
-        <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">
-          SIGNAL ENGINE
-        </h3>
+        <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">RESEARCH INSIGHTS</h3>
       </div>
-      <span className="text-[9px] text-[#3db26b] bg-[#3db26b]/10 px-2 py-1 rounded border border-[#3db26b]/20 font-bold">HIGH CONFIDENCE</span>
+      <div className="flex items-center gap-2">
+        <span className="text-[9px] text-[#8b909a] italic">For informational use only</span>
+        <span className="text-[9px] text-[#3db26b] bg-[#3db26b]/10 px-2 py-0.5 rounded border border-[#3db26b]/20 font-bold">● LIVE</span>
+      </div>
     </div>
-    <div className="flex-1 px-3 pb-3 space-y-3 overflow-y-auto custom-scrollbar">
+
+    {/* Research Cards */}
+    <div className="flex-1 px-3 pb-3 pt-2 space-y-3 overflow-y-auto custom-scrollbar">
       {[
-        { sym: "INFY", signals: ["Volume breakout detected", "Trend aligned", "Momentum strong"], conf: "HIGH", icon: "🚀" },
-        { sym: "RELIANCE", signals: ["Support bounce", "RSI oversold"], conf: "MEDIUM", icon: "⚠️" },
+        {
+          sym: "INFY",
+          pattern: "Ascending Triangle",
+          patternColor: "#3db26b",
+          timeframe: "1H",
+          indicators: [
+            { name: "RSI (14)", value: "67.4", note: "Near overbought zone", color: "#f0b429" },
+            { name: "MACD", value: "+0.82", note: "Bullish crossover", color: "#3db26b" },
+            { name: "Volume", value: "2.3x Avg", note: "Above average", color: "#3db26b" },
+            { name: "EMA 20", value: "1,408", note: "Price above EMA", color: "#3db26b" },
+          ],
+          tfAlign: ["↑", "↑", "↑", "→"],
+          note: "Price consolidating near resistance. Volume expansion observed. Watch for a decisive close above ₹1,435 for confirmation.",
+        },
+        {
+          sym: "RELIANCE",
+          pattern: "Double Bottom",
+          patternColor: "#f0b429",
+          timeframe: "4H",
+          indicators: [
+            { name: "RSI (14)", value: "31.2", note: "Oversold territory", color: "#3db26b" },
+            { name: "MACD", value: "-1.20", note: "Histogram shrinking", color: "#f0b429" },
+            { name: "Volume", value: "1.1x Avg", note: "Near average", color: "#8b909a" },
+            { name: "EMA 50", value: "2,560", note: "Price below EMA", color: "#ed5750" },
+          ],
+          tfAlign: ["↓", "→", "↓", "↓"],
+          note: "Potential base forming at ₹2,510 support zone. RSI divergence visible. Needs volume confirmation before any directional bias.",
+        },
+        {
+          sym: "ADANIENT",
+          pattern: "Head & Shoulders",
+          patternColor: "#ed5750",
+          timeframe: "1D",
+          indicators: [
+            { name: "RSI (14)", value: "58.1", note: "Neutral range", color: "#8b909a" },
+            { name: "MACD", value: "-2.40", note: "Bearish crossover", color: "#ed5750" },
+            { name: "Volume", value: "3.1x Avg", note: "High volume breakdown", color: "#ed5750" },
+            { name: "EMA 20", value: "2,445", note: "Price below EMA", color: "#ed5750" },
+          ],
+          tfAlign: ["↓", "↓", "↓", "→"],
+          note: "Classic H&S neckline breach on daily chart. High volume on breakdown adds significance. Pattern target zone: ₹2,280–2,320.",
+        },
       ].map((item, idx) => (
-        <div key={idx} className={`border rounded-lg p-3 transition-all hover:scale-[1.02] ${item.conf === "HIGH"
-          ? "border-[#3db26b]/30 bg-gradient-to-br from-[#3db26b]/5 to-transparent shadow-[0_0_15px_rgba(61,178,107,0.1)]"
-          : "border-yellow-500/30 bg-gradient-to-br from-yellow-500/5 to-transparent shadow-[0_0_15px_rgba(234,179,8,0.1)]"
-          }`}>
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{item.icon}</span>
-              <span className="text-[#d1d4dc] font-bold text-sm">{item.sym}</span>
+        <div
+          key={idx}
+          className="rounded-xl p-3 transition-all"
+          style={{
+            border: `1px solid ${item.patternColor}50`,
+            background: '#131722',
+            boxShadow: `0 0 0 1px ${item.patternColor}15 inset`,
+          }}
+        >
+          {/* Symbol + Pattern + Timeframe */}
+          <div className="flex justify-between items-center mb-2.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-white font-bold text-sm tracking-wide">{item.sym}</span>
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                style={{ color: item.patternColor, background: `${item.patternColor}18`, border: `1px solid ${item.patternColor}35` }}
+              >
+                {item.pattern}
+              </span>
             </div>
-            <span className={`text-[10px] font-bold px-2 py-1 rounded ${item.conf === "HIGH"
-              ? "text-[#3db26b] bg-[#3db26b]/20 border border-[#3db26b]/30"
-              : "text-yellow-500 bg-yellow-500/20 border border-yellow-500/30"
-              }`}>
-              {item.conf}
-            </span>
+            <span className="text-[9px] text-[#5d606b] bg-white/5 px-2 py-0.5 rounded font-mono">{item.timeframe}</span>
           </div>
-          <div className="space-y-1.5">
-            {item.signals.map((sig, i) => (
-              <div key={i} className="flex items-start gap-2 text-[11px] text-[#d1d4dc] leading-relaxed">
-                <span className="text-[#3db26b] mt-0.5">✓</span>
-                <span>{sig}</span>
+
+          {/* Indicators Grid */}
+          <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+            {item.indicators.map((ind, i) => (
+              <div key={i} className="rounded-lg px-2 py-1.5" style={{ background: '#1a1f2e', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] text-[#6b7280] uppercase tracking-wider font-semibold">{ind.name}</span>
+                  <span className="text-[11px] font-mono font-bold" style={{ color: ind.color }}>{ind.value}</span>
+                </div>
+                <div className="text-[9px] text-[#4b5563] mt-0.5">{ind.note}</div>
               </div>
             ))}
           </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
-const CatalystPanel = () => (
-  <div className="trader-card flex flex-col h-full bg-gradient-to-br from-[#131722] to-[#1a1e2e] border border-white/10">
-    <div className="card-header flex justify-between items-center mb-3 px-3 py-2.5 bg-gradient-to-r from-[#2a2e39] to-[#1f232e] border-b border-white/10">
-      <div className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 bg-[#3db26b] rounded-full animate-pulse"></div>
-        <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">
-          CATALYST
-        </h3>
-      </div>
-      <span className="text-[10px] text-[#5d606b] bg-white/5 px-2 py-1 rounded">Today</span>
-    </div>
-    <div className="flex-1 px-3 pb-3 space-y-2.5 overflow-y-auto custom-scrollbar">
-      {[
-        { msg: "Fed rate decision tomorrow", impact: "HIGH", icon: "🏦", color: "border-red-500/30 bg-red-500/5" },
-        { msg: "Bank earnings today", impact: "HIGH", icon: "💰", color: "border-[#3db26b]/30 bg-[#3db26b]/5" },
-        { msg: "Options expiry today", impact: "MED", icon: "⏰", color: "border-yellow-500/30 bg-yellow-500/5" },
-        { msg: "RBI policy review", impact: "MED", icon: "📢", color: "border-blue-500/30 bg-blue-500/5" },
-      ].map((item, idx) => (
-        <div key={idx} className={`border ${item.color} rounded-lg p-2.5 hover:scale-[1.02] transition-transform`}>
-          <div className="flex items-start gap-2">
-            <span className="text-base mt-0.5">{item.icon}</span>
-            <div className="flex-1">
-              <span className="text-xs text-[#d1d4dc] leading-relaxed">{item.msg}</span>
-              <div className="mt-1">
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${item.impact === "HIGH"
-                  ? "text-[#ed5750] bg-[#ed5750]/20"
-                  : "text-yellow-500 bg-yellow-500/20"
-                  }`}>
-                  {item.impact} IMPACT
+          {/* Multi-Timeframe Alignment */}
+          <div className="flex items-center gap-2 mb-2.5" style={{ background: '#1a1f2e', borderRadius: '8px', padding: '6px 8px' }}>
+            <span className="text-[9px] text-[#6b7280] uppercase tracking-wider font-semibold">TF Align:</span>
+            {["5M", "15M", "1H", "1D"].map((tf, i) => (
+              <div key={i} className="flex flex-col items-center">
+                <span className="text-[8px] text-[#5d606b]">{tf}</span>
+                <span className={`text-xs font-bold ${item.tfAlign[i] === "↑" ? "text-[#3db26b]" : item.tfAlign[i] === "↓" ? "text-[#ed5750]" : "text-[#8b909a]"}`}>
+                  {item.tfAlign[i]}
                 </span>
               </div>
-            </div>
+            ))}
+          </div>
+
+          {/* Research Note */}
+          <div
+            className="rounded-lg px-2.5 py-2"
+            style={{ background: '#1a1f2e', borderLeft: `2px solid ${item.patternColor}`, border: '1px solid rgba(255,255,255,0.08)', borderLeftWidth: '2px', borderLeftColor: item.patternColor }}
+          >
+            <div className="text-[9px] uppercase tracking-wider mb-1 font-bold" style={{ color: item.patternColor }}>📋 Research Note</div>
+            <p className="text-[10px] text-[#9ca3af] leading-relaxed">{item.note}</p>
           </div>
         </div>
       ))}
     </div>
   </div>
 );
+
+
+const CatalystPanel = () => (
+  <div className="trader-card flex flex-col h-full border border-white/10" style={{ background: '#0d1117' }}>
+    {/* Header */}
+    <div className="card-header flex justify-between items-center px-3 py-2.5 border-b border-white/10" style={{ background: '#161b27' }}>
+      <div className="flex items-center gap-2">
+        <div className="w-1.5 h-1.5 bg-[#3db26b] rounded-full animate-pulse"></div>
+        <div>
+          <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">MARKET CATALYSTS</h3>
+          <p className="text-[9px] text-[#5d606b] mt-0.5">Events that may drive price action today</p>
+        </div>
+      </div>
+      <span className="text-[9px] text-[#f0b429] bg-[#f0b429]/10 px-2 py-0.5 rounded border border-[#f0b429]/20 font-bold">18 Feb</span>
+    </div>
+
+    {/* Events */}
+    <div className="flex-1 px-3 pb-2 pt-2 space-y-2 overflow-y-auto custom-scrollbar">
+      {[
+        {
+          time: "09:15", msg: "Market Open — Gap-up expected",
+          impact: "HIGH", impactColor: "#3db26b",
+          icon: "🔔", sector: "Broad Market",
+          border: "#3db26b",
+        },
+        {
+          time: "10:00", msg: "RBI Monetary Policy Statement",
+          impact: "HIGH", impactColor: "#ed5750",
+          icon: "🏦", sector: "Banking · NBFC",
+          border: "#ed5750",
+        },
+        {
+          time: "12:30", msg: "INFY Q3 Earnings Release",
+          impact: "HIGH", impactColor: "#ed5750",
+          icon: "💰", sector: "IT Sector",
+          border: "#ed5750",
+        },
+        {
+          time: "14:00", msg: "US CPI Data — Pre-market impact",
+          impact: "MED", impactColor: "#f0b429",
+          icon: "🌐", sector: "Global · FII Flow",
+          border: "#f0b429",
+        },
+        {
+          time: "15:30", msg: "F&O Weekly Expiry — High volatility",
+          impact: "MED", impactColor: "#f0b429",
+          icon: "⏰", sector: "Derivatives",
+          border: "#f0b429",
+        },
+        {
+          time: "EOD", msg: "FII/DII Provisional Data",
+          impact: "LOW", impactColor: "#8b909a",
+          icon: "📋", sector: "Institutional Flow",
+          border: "#8b909a",
+        },
+      ].map((item, idx) => (
+        <div
+          key={idx}
+          className="rounded-lg p-2.5 transition-all cursor-pointer"
+          style={{
+            background: '#131722',
+            border: `1px solid ${item.border}30`,
+            borderLeft: `3px solid ${item.border}`,
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1a1f2e'}
+          onMouseLeave={e => e.currentTarget.style.background = '#131722'}
+        >
+          <div className="flex items-start gap-2">
+            <span className="text-base mt-0.5 flex-shrink-0">{item.icon}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-start gap-1">
+                <span className="text-[11px] text-white font-semibold leading-tight">{item.msg}</span>
+                <span
+                  className="text-[8px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{ color: item.impactColor, background: `${item.impactColor}18` }}
+                >
+                  {item.impact}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[9px] font-mono text-[#5d606b]">{item.time}</span>
+                <span className="text-[#2a2e39]">·</span>
+                <span className="text-[9px] text-[#5d606b]">{item.sector}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Footer */}
+    <div className="px-3 py-2 border-t border-white/10 flex justify-between items-center" style={{ background: '#161b27' }}>
+      <span className="text-[9px] text-[#5d606b]">6 events today</span>
+      <div className="flex items-center gap-2 text-[9px]">
+        <span className="text-[#ed5750] font-bold">2 HIGH</span>
+        <span className="text-[#f0b429] font-bold">2 MED</span>
+        <span className="text-[#5d606b]">1 LOW</span>
+      </div>
+    </div>
+  </div>
+);
+
 
 const TechnicalScreeners = () => {
   const [activeTab, setActiveTab] = useState("BREAKOUT");
@@ -1538,12 +1811,147 @@ const NewsFlash = () => (
   </div>
 );
 
+// ============================================
+// QUICK TRADE PANEL
+// ============================================
+
+const QuickTradePanel = () => {
+  const [qty, setQty] = useState("50");
+  const [price, setPrice] = useState("18500");
+  const [orderType, setOrderType] = useState("MARKET");
+  const [tradeSymbol, setTradeSymbol] = useState("NIFTY 50");
+  const [lastAction, setLastAction] = useState(null);
+
+  const handleTrade = (side) => {
+    setLastAction({ side, qty, price: orderType === "MARKET" ? "MKT" : price, time: new Date().toLocaleTimeString() });
+    setTimeout(() => setLastAction(null), 3000);
+  };
+
+  return (
+    <div className="trader-card flex flex-col h-full bg-gradient-to-br from-[#131722] to-[#0d1117] border border-white/10">
+      <div className="card-header flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-[#1a1e2e] to-[#131722] border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-[#3db26b] rounded-full animate-pulse"></div>
+          <h3 className="text-[#9194a2] font-bold text-xs tracking-wider">QUICK TRADE</h3>
+        </div>
+        <select
+          value={tradeSymbol}
+          onChange={(e) => setTradeSymbol(e.target.value)}
+          className="text-[10px] bg-white/5 border border-white/10 text-[#d1d4dc] rounded px-1.5 py-1 outline-none cursor-pointer"
+        >
+          {["NIFTY 50", "BANKNIFTY", "RELIANCE", "TCS", "HDFCBANK"].map(s => (
+            <option key={s} value={s} className="bg-[#131722]">{s}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex-1 p-3 space-y-3">
+        {/* Order Type */}
+        <div className="flex gap-1">
+          {["MARKET", "LIMIT", "SL"].map(t => (
+            <button
+              key={t}
+              onClick={() => setOrderType(t)}
+              className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all ${orderType === t
+                ? "bg-[#3db26b] text-white border border-[#3db26b]"
+                : "bg-white/5 text-[#9194a2] border border-white/10 hover:border-[#3db26b]/50"
+                }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Quantity */}
+        <div>
+          <div className="text-[10px] text-[#5d606b] uppercase tracking-wider mb-1.5">Quantity (Lots)</div>
+          <div className="flex gap-1">
+            {["25", "50", "75", "MAX"].map(q => (
+              <button
+                key={q}
+                onClick={() => setQty(q === "MAX" ? "200" : q)}
+                className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all ${qty === (q === "MAX" ? "200" : q)
+                  ? "bg-white/20 text-white border border-white/30"
+                  : "bg-white/5 text-[#9194a2] border border-white/10 hover:border-white/20"
+                  }`}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            className="mt-1.5 w-full bg-white/5 border border-white/10 text-[#d1d4dc] text-xs rounded px-2 py-1.5 outline-none focus:border-[#3db26b]/50 font-mono"
+            placeholder="Custom qty..."
+          />
+        </div>
+
+        {/* Price */}
+        {orderType !== "MARKET" && (
+          <div>
+            <div className="text-[10px] text-[#5d606b] uppercase tracking-wider mb-1.5">Price</div>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 text-[#d1d4dc] text-xs rounded px-2 py-1.5 outline-none focus:border-[#3db26b]/50 font-mono"
+              placeholder="Enter price..."
+            />
+          </div>
+        )}
+
+        {/* Trade Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleTrade("BUY")}
+            className="py-3 text-sm font-bold rounded-lg bg-gradient-to-b from-[#3db26b] to-[#2d9a5a] text-white border border-[#3db26b]/50 hover:from-[#4dc87a] hover:to-[#3db26b] transition-all shadow-[0_4px_12px_rgba(61,178,107,0.3)] hover:shadow-[0_6px_20px_rgba(61,178,107,0.4)] active:scale-95"
+          >
+            BUY
+          </button>
+          <button
+            onClick={() => handleTrade("SELL")}
+            className="py-3 text-sm font-bold rounded-lg bg-gradient-to-b from-[#ed5750] to-[#c94040] text-white border border-[#ed5750]/50 hover:from-[#f06860] hover:to-[#ed5750] transition-all shadow-[0_4px_12px_rgba(237,87,80,0.3)] hover:shadow-[0_6px_20px_rgba(237,87,80,0.4)] active:scale-95"
+          >
+            SELL
+          </button>
+        </div>
+
+        {/* Order Summary */}
+        <div className="bg-white/5 rounded-lg p-2.5 border border-white/5">
+          <div className="flex justify-between text-[10px] text-[#5d606b] mb-1">
+            <span>Margin Required</span>
+            <span className="text-[#d1d4dc] font-mono">₹1,23,750</span>
+          </div>
+          <div className="flex justify-between text-[10px] text-[#5d606b]">
+            <span>Available Margin</span>
+            <span className="text-[#3db26b] font-mono">₹5,00,000</span>
+          </div>
+        </div>
+
+        {/* Last Action Toast */}
+        {lastAction && (
+          <div className={`text-center text-[11px] font-bold py-2 rounded-lg animate-pulse ${lastAction.side === "BUY"
+            ? "bg-[#3db26b]/20 text-[#3db26b] border border-[#3db26b]/30"
+            : "bg-[#ed5750]/20 text-[#ed5750] border border-[#ed5750]/30"
+            }`}>
+            ✓ {lastAction.side} {lastAction.qty} @ {lastAction.price} — {lastAction.time}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 function TraderView({ data, activeModule }) {
   const [expandedChart, setExpandedChart] = useState(null);
-  const [chartType, setChartType] = useState("area"); // "area" or "candles"
-  const [timeframe, setTimeframe] = useState("15m"); // "1m", "5m", "15m", "1h", "4h", "1D"
+  const [chartType, setChartType] = useState("area");
+  const [timeframe, setTimeframe] = useState("15m");
   const [showIndicators, setShowIndicators] = useState(false);
-  const [layout, setLayout] = useState("4-grid"); // "1-grid", "2-grid", "4-grid"
+  const [layout, setLayout] = useState("4-grid");
+
+
   if (activeModule && activeModule !== "DASHBOARD") {
     return (
       <div className="dashboard-layout flex items-center justify-center text-white h-screen">
@@ -1559,6 +1967,7 @@ function TraderView({ data, activeModule }) {
     <div className="dashboard-layout w-full">
       <div className="main-content-area w-full max-w-[1920px] mx-auto p-4">
         <div className="trader-bento-grid">
+
           {/* Row 1 - Left: Workspace */}
           <section className="bento-card bento-workspace" style={{ animationDelay: '0.1s' }}>
             <div className="workspace-header">
@@ -1637,8 +2046,10 @@ function TraderView({ data, activeModule }) {
           <aside className="bento-card bento-trade" style={{ animationDelay: '0.35s' }}>
             <InstrumentSummaryPanel />
           </aside>
+
         </div>
       </div>
+
 
       {expandedChart && (
         <div className="chart-modal" role="dialog" aria-modal="true">
@@ -1649,13 +2060,13 @@ function TraderView({ data, activeModule }) {
           <div className="chart-modal-panel">
             <div className="chart-modal-header">
               <div className="chart-modal-title">
-                {expandedChart} - Full Screen
+                {expandedChart} — Full Screen
               </div>
               <button
                 className="chart-modal-close"
                 onClick={() => setExpandedChart(null)}
               >
-                Close
+                ✕ Close
               </button>
             </div>
             <div className="chart-modal-body">
