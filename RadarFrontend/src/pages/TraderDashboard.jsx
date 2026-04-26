@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, Maximize2, TrendingDown, TrendingUp, Search, Newspaper, Globe, Zap, ExternalLink, Monitor } from "lucide-react";
 import { motion } from "framer-motion";
@@ -24,7 +24,7 @@ import { fetchMarketHistory, fetchMarketNews } from "../api/marketApi";
 import { useAsset } from "../context/AssetContext";
 import SharedMultiChartGrid from "../components/trader/MultiChartGrid";
 import SharedAdvancedWatchlist from "../components/trader/AdvancedWatchlist";
-import EnhancedStockScreener from "../components/trader/EnhancedStockScreener"; // ENHANCED VERSION
+import EnhancedStockScreener from "../components/trader/EnhancedStockScreener";
 import MultiChartWorkspace from "../components/trader/MultiChartWorkspace"; // TRADINGVIEW MULTI-CHART
 import RealTimeScanner from "../components/trader/RealTimeScanner"; // TRADINGVIEW SCANNER
 import MainLayout from "../components/layout/MainLayout";
@@ -33,7 +33,7 @@ import TraderStockPage from "./TraderStockPage";
 import "./TraderDashboard.css";
 
 import ScreenerPage from "./ScreenerPage";
-const ENABLE_SIMULATION_MODE = true; // Set to false when backend is stable
+const ENABLE_SIMULATION_MODE = false;
 
 const BACKEND_SYMBOL_MAP = {
   RELIANCE: "RELIANCE.NS",
@@ -77,107 +77,29 @@ const RESEARCH_UNIVERSE = [
 
 const SUMMARY_INDEX_UNIVERSE = ["NIFTY 50", "BANKNIFTY", "SENSEX", "NIFTY IT", "NIFTY AUTO", "NIFTY FIN SERVICE", "NIFTY INFRA"];
 
-const FALLBACK_HEATMAP = [
-  { name: "BANKING", change: 1.8 },
-  { name: "IT", change: 1.3 },
-  { name: "AUTO", change: 0.9 },
-  { name: "METAL", change: -0.8 },
-  { name: "FMCG", change: 0.6 },
-  { name: "REALTY", change: -1.1 },
-];
+const FALLBACK_HEATMAP = [];
 
 const FALLBACK_PULSE = {
-  gapUp: [
-    { symbol: "RELIANCE", change: "+1.40%", price: 2845 },
-    { symbol: "INFY", change: "+1.05%", price: 1510 },
-    { symbol: "HDFCBANK", change: "+0.92%", price: 1722 },
-  ],
-  gapDown: [
-    { symbol: "TATASTEEL", change: "-1.10%", price: 152 },
-    { symbol: "SBIN", change: "-0.86%", price: 798 },
-    { symbol: "LT", change: "-0.55%", price: 3628 },
-  ],
-  volumeShockers: [
-    { symbol: "ICICIBANK", shock: "2.3x" },
-    { symbol: "AXISBANK", shock: "1.9x" },
-    { symbol: "ITC", shock: "1.7x" },
-  ],
+  gapUp: [],
+  gapDown: [],
+  volumeShockers: [],
 };
 
-const FALLBACK_RESEARCH_INSIGHTS = [
-  {
-    key: "fallback-summary-reliance",
-    title: "RELIANCE",
-    badge: "Setup Watch",
-    badgeColor: "#42C0A5",
-    kind: "summary",
-    rankScore: 71,
-    timeframe: "Fallback scan",
-    details: [
-      { name: "Bias", value: "Bullish", note: "Score 71", color: "#42C0A5" },
-      { name: "RSI", value: "61.2", note: "Momentum", color: "#42C0A5" },
-      { name: "MACD Delta", value: "0.82", note: "Signal spread", color: "#42C0A5" },
-      { name: "Volume", value: "Above Average", note: "Participation", color: "#42C0A5" },
-    ],
-    note: "Fallback research view while backend insight scan is unavailable.",
-  },
-  {
-    key: "fallback-summary-hdfcbank",
-    title: "HDFCBANK",
-    badge: "Support Retest",
-    badgeColor: "#f0b429",
-    kind: "summary",
-    rankScore: 63,
-    timeframe: "Fallback scan",
-    details: [
-      { name: "Bias", value: "Neutral", note: "Score 63", color: "#f0b429" },
-      { name: "RSI", value: "53.8", note: "Momentum", color: "#f0b429" },
-      { name: "MACD Delta", value: "0.18", note: "Signal spread", color: "#42C0A5" },
-      { name: "Volume", value: "Average", note: "Participation", color: "#8b909a" },
-    ],
-    note: "Fallback insight card. Confirm with live backend feed before execution.",
-  },
-  {
-    key: "fallback-alert-nifty",
-    title: "NIFTY 50",
-    badge: "Resistance Test",
-    badgeColor: "#ed5750",
-    kind: "alert",
-    rankScore: 55,
-    timeframe: "Fallback alert",
-    details: [
-      { name: "Trigger", value: "Resistance Test", note: "Technical alert", color: "#ed5750" },
-      { name: "Price", value: "18,536", note: "Spot price", color: "#d1d4dc" },
-    ],
-    note: "Fallback alert generated while backend alert stream is unavailable.",
-  },
-];
+const FALLBACK_RESEARCH_INSIGHTS = [];
 
 const FALLBACK_SUMMARY = {
-  score: { score: 67, bias: "bullish" },
+  score: { score: 0, bias: "neutral" },
   indicators: {
-    rsi: 58.2,
-    volumeStatus: "above_average",
-    macd: { value: 1.84, signal: 1.22 },
-    support: 18395,
-    resistance: 18640,
-    ema20: 18502,
-    current: 18536,
+    rsi: 0,
+    volumeStatus: "neutral",
+    macd: { value: 0, signal: 0 },
+    support: 0,
+    resistance: 0,
+    ema20: 0,
+    current: 0,
   },
-  trendMatrix: {
-    "5m": "bullish",
-    "15m": "bullish",
-    "1h": "neutral",
-    "4h": "bullish",
-    "1d": "bullish",
-  },
-  patterns: [
-    {
-      pattern: "Ascending Triangle",
-      confidence: 78,
-      description: "Price compressing near resistance with steady higher lows.",
-    },
-  ],
+  trendMatrix: {},
+  patterns: [],
 };
 
 const getBiasMeta = (bias) => {
@@ -333,12 +255,9 @@ const normalizeVolumeShockers = (rows = []) => (
     .filter((item) => item.symbol)
 );
 
-const NEWS_MOCK_ITEMS = [
-  { source: "Bloomberg", title: "Reliance expands refining capacity; street raises forward targets", publishedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
-  { source: "Reuters", title: "IT basket gains as US macro cools; Infosys and TCS see fresh buying", publishedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString() },
-  { source: "CNBC", title: "Banking names in focus after steady credit growth data for the quarter", publishedAt: new Date(Date.now() - 1000 * 60 * 43).toISOString() },
-  { source: "EconomicTimes", title: "Crude swings ahead of policy commentary; energy and auto may stay volatile", publishedAt: new Date(Date.now() - 1000 * 60 * 55).toISOString() },
-  { source: "Mint", title: "Analysts flag selective midcap momentum as breadth improves in late session", publishedAt: new Date(Date.now() - 1000 * 60 * 72).toISOString() },
+// Minimal fallback shown only when the news API is completely unavailable
+const NEWS_FALLBACK_ITEMS = [
+  { source: "RADAR", title: "Market news unavailable — backend may be offline.", publishedAt: new Date().toISOString() },
 ];
 
 const usePreMarketPulse = () => {
@@ -2305,7 +2224,7 @@ const MarketSentiment = () => {
 
 const NewsFlash = ({ variant = "full" }) => {
   const navigate = useNavigate();
-  const [newsItems, setNewsItems] = useState(NEWS_MOCK_ITEMS);
+  const [newsItems, setNewsItems] = useState(NEWS_FALLBACK_ITEMS);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [activeFeed, setActiveFeed] = useState("All");
@@ -2324,13 +2243,13 @@ const NewsFlash = ({ variant = "full" }) => {
           setNewsItems(
             Array.isArray(response) && response.length
               ? response
-              : NEWS_MOCK_ITEMS
+              : NEWS_FALLBACK_ITEMS
           );
         }
       } catch (error) {
         console.error("Failed to load market news:", error);
         if (isMounted) {
-          setNewsItems(NEWS_MOCK_ITEMS);
+          setNewsItems(NEWS_FALLBACK_ITEMS);
         }
       } finally {
         if (isMounted && !silent) {

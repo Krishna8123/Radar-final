@@ -211,8 +211,6 @@ const getStockNewsSentiment = async (symbol) => {
     };
 };
 
-<<<<<<< HEAD
-=======
 const getStockSignals = async (symbol, term = 'medium') => {
     logger.info(`Fetching stock signals for ${symbol} with term: ${term}`);
     // Make resilient to missing stocks in database
@@ -332,13 +330,9 @@ const getStockSignals = async (symbol, term = 'medium') => {
     };
 };
 
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 module.exports = {
     getStockFundamentals,
     getStockEarningsCalendar,
     getStockNewsSentiment,
-<<<<<<< HEAD
-=======
     getStockSignals,
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 };

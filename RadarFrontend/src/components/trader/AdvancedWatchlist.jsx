@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -10,6 +10,7 @@ import {
   Search,
   SlidersHorizontal,
   Trash2,
+  X,
 } from "lucide-react";
 
 import {
@@ -22,9 +23,16 @@ import {
 
 import { useAsset } from "../../context/AssetContext";
 import StockDetailsPanel from "../watchlist/StockDetailsPanel";
+import { fetchWatchlistLiveData } from "../../api/watchlistApi";
+import { fetchMarketData, fetchUniversalSymbolSearch } from "../../api/marketApi";
+import api from "../../api/api";
+import { useSocket } from "../../hooks/useSocket";
 
 const NOTES_KEY = "watchlist_notes_v2";
 const WATCHLIST_KEY = "trader_terminal_watchlist_v1";
+
+// Default symbols shown when user has no saved watchlist
+const DEFAULT_SYMBOLS = ["RELIANCE", "HDFCBANK", "INFY", "TCS", "SBIN", "ICICIBANK", "TATAMOTORS"];
 
 const Sparkline = ({ data, color, width = 80, height = 24 }) => {
   if (!data || data.length < 2) return null;
@@ -77,20 +85,15 @@ const TAB_CONFIGS = {
   }
 };
 
-const MOCK_ROWS = [
-  { symbol: "RELIANCE", company: "Reliance Industries", price: 2845.35, changePercent: 1.24, volume: 21200000, sector: "Energy" },
-  { symbol: "HDFCBANK", company: "HDFC Bank", price: 1722.1, changePercent: 0.52, volume: 10500000, sector: "Financials" },
-  { symbol: "INFY", company: "Infosys Ltd", price: 1510.25, changePercent: 0.88, volume: 12100000, sector: "IT" },
-  { symbol: "TCS", company: "Tata Consultancy", price: 3845.4, changePercent: -0.31, volume: 4200000, sector: "IT" },
-  { symbol: "SBIN", company: "State Bank of India", price: 812.45, changePercent: 2.15, volume: 25600000, sector: "Financials" },
-  { symbol: "ICICIBANK", company: "ICICI Bank", price: 1142.6, changePercent: 1.06, volume: 15800000, sector: "Financials" },
-  { symbol: "TATAMOTORS", company: "Tata Motors", price: 988.7, changePercent: 1.46, volume: 11200000, sector: "Auto" },
-];
-
-const EXTRA_MOCK_ROWS = [
-  { symbol: "LT", company: "Larsen & Toubro", price: 3628.15, changePercent: 0.74, volume: 5900000, sector: "Industrials" },
-  { symbol: "ITC", company: "ITC Limited", price: 462.8, changePercent: -0.22, volume: 17400000, sector: "FMCG" },
-];
+// Live market row normalizer — maps API response to the shape buildDecoratedRow expects
+const normalizeMarketRow = (item) => ({
+  symbol: String(item?.symbol || item?.name || '').replace(/\.(NS|BO)$/i, ''),
+  company: item?.name || item?.company || item?.symbol || '',
+  price: Number(item?.price ?? item?.ltp ?? item?.lastPrice ?? 0),
+  changePercent: Number(item?.changePercent ?? item?.change_24h ?? item?.change ?? 0),
+  volume: Number(item?.volume ?? item?.vol ?? 0),
+  sector: item?.sector || 'Market',
+});
 
 const makeSeed = (text) => String(text || "").split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
 
@@ -99,30 +102,26 @@ const buildDecoratedRow = (row) => {
   const changePercent = Number(row.changePercent || 0);
   const price = Number(row.price || 0);
   
-  const chart = Array.from({ length: 20 }).map((_, i) => {
-    const wave = Math.sin((seed + i * 11) * 0.2) * 5;
-    const trendValue = changePercent * i * 0.4;
-    return Number((price * (1 + (wave + trendValue) / 100)).toFixed(2));
-  });
-
-  const rsi = calculateRSI(chart);
-  const vwap = price * (0.998 + (seed % 4) * 0.001);
-  const ema20 = price * (1.002 - (seed % 5) * 0.001);
-  const trend = rsi > 50 ? 'bullish' : 'bearish';
+  const chart = row.chart || [];
+  const rsi = row.rsi || (chart.length > 0 ? calculateRSI(chart) : 0);
+  const vwap = row.vwap || 0;
+  const ema20 = row.ema20 || 0;
+  const trend = rsi > 50 ? 'bullish' : (rsi > 0 ? 'bearish' : 'neutral');
   const isVolumeSpike = Number(row.volume) > 15000000;
+  
   
   const tradeScore = calculateTradeScore(price, rsi, trend, isVolumeSpike);
   const signals = getSignalTags(price, rsi, trend, vwap, row.volume, 10000000);
   const levels = calculateTradeLevels(price, trend);
   const aiInsight = generateAIInsight(row.symbol, tradeScore, signals, trend);
 
-  const peRatio = (15 + (seed % 25)).toFixed(1);
-  const divYield = (0.5 + (seed % 4) * 0.8).toFixed(2) + "%";
-  const eps = (20 + (seed % 100)).toFixed(1);
-  const marketCap = (seed % 2 === 0 ? "7.2T" : "1.4T");
+  const peRatio = row.pe ?? row.peRatio ?? '—';
+  const divYield = row.yield ?? row.dividendYield ?? '—';
+  const eps = row.eps ?? '—';
+  const marketCap = row.mcap ?? row.marketCap ?? '—';
 
-  const rsRating = (40 + (seed % 50)).toFixed(1);
-  const monthPerformance = (changePercent * 1.5 + (seed % 5) - 2.5).toFixed(2);
+  const rsRating = row.rsRating ?? '—';
+  const monthPerformance = row.monthPerformance ?? '—';
 
   return {
     ...row,
@@ -134,9 +133,9 @@ const buildDecoratedRow = (row) => {
     aiInsight,
     trend,
     chart,
-    rsiVal: rsi.toFixed(1),
-    vwapVal: vwap.toFixed(2),
-    ema20Val: ema20.toFixed(2),
+    rsiVal: rsi > 0 ? rsi.toFixed(1) : '—',
+    vwapVal: vwap > 0 ? vwap.toFixed(2) : '—',
+    ema20Val: ema20 > 0 ? ema20.toFixed(2) : '—',
     peRatio,
     divYield,
     eps,
@@ -152,7 +151,7 @@ const AdvancedWatchlist = ({ onSymbolSelect }) => {
   const { setAsset } = useAsset();
 
   const [rows, setRows] = useState([]);
-  const [lastTick, setLastTick] = useState({}); // Tracking tick state for animations {symbol: 'up'|'down'}
+  const [lastTick, setLastTick] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("Overview");
@@ -166,84 +165,141 @@ const AdvancedWatchlist = ({ onSymbolSelect }) => {
   const [focusedSymbols, setFocusedSymbols] = useState(new Set());
   const [notes, setNotes] = useState({});
   const [currentNote, setCurrentNote] = useState("");
+  // Add-ticker search state
+  const [addTickerOpen, setAddTickerOpen] = useState(false);
+  const [addTickerQuery, setAddTickerQuery] = useState("");
+  const [addTickerResults, setAddTickerResults] = useState([]);
+  const [addTickerLoading, setAddTickerLoading] = useState(false);
+  const [watchlistId, setWatchlistId] = useState(null);
+  const addTickerRef = useRef(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem(WATCHLIST_KEY);
-    const timer = window.setTimeout(() => {
-      if (saved) {
+  const { on } = useSocket(['ticker']);
+
+  // ── Live data loader ───────────────────────────────────────────────
+  const loadWatchlist = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // 1. Try backend watchlist (authenticated)
+      const token = localStorage.getItem('token');
+      let symbols = [];
+
+      if (token) {
         try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setRows(parsed.map(buildDecoratedRow));
-            setIsLoading(false);
-            return;
+          const listsRes = await api.get('/watchlists');
+          const lists = Array.isArray(listsRes.data) ? listsRes.data : [];
+          if (lists.length > 0) {
+            setWatchlistId(lists[0]._id);
+            symbols = (lists[0].items || []).map(i => String(i.symbol || '').replace(/\.(NS|BO)$/i, ''));
           }
-        } catch (e) { console.error("Failed to load watchlist", e); }
+        } catch (e) { console.warn('Watchlist auth fetch failed, using defaults'); }
       }
-      setRows([...MOCK_ROWS, ...EXTRA_MOCK_ROWS].map(buildDecoratedRow));
+
+      if (symbols.length === 0) {
+        symbols = DEFAULT_SYMBOLS;
+      }
+
+      // 2. Fetch live market data for those symbols
+      const marketRes = await fetchMarketData({ type: 'STOCK' });
+      const marketMap = {};
+      if (Array.isArray(marketRes)) {
+        marketRes.forEach(item => {
+          const sym = String(item?.symbol || '').replace(/\.(NS|BO)$/i, '');
+          marketMap[sym] = item;
+        });
+      }
+
+      // 3. Build decorated rows — merge live data with defaults
+      const builtRows = symbols.map(sym => {
+        const live = marketMap[sym];
+        const base = normalizeMarketRow(live || { symbol: sym });
+        return buildDecoratedRow(base);
+      });
+
+      setRows(builtRows);
+    } catch (err) {
+      console.error('loadWatchlist failed:', err);
+      setRows(DEFAULT_SYMBOLS.map(sym => buildDecoratedRow(normalizeMarketRow({ symbol: sym }))));
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => window.clearTimeout(timer);
+    }
   }, []);
 
+  // Initial load
+  useEffect(() => { loadWatchlist(); }, [loadWatchlist]);
+
+  // Real-time price updates via WebSocket
+  useEffect(() => {
+    on('price_update', (event) => {
+      if (!event.symbol) return;
+      const eventSym = String(event.symbol).replace(/\.(NS|BO)$/i, '').toUpperCase();
+      
+      setRows(prev => {
+        const targetIdx = prev.findIndex(r => r.symbol.toUpperCase() === eventSym);
+        if (targetIdx === -1) return prev;
+
+        const next = [...prev];
+        const row = next[targetIdx];
+        const newPrice = Number(event.price);
+        
+        if (newPrice === row.price) return prev;
+
+        const nextTickState = { [row.symbol]: newPrice > row.price ? 'up' : 'down' };
+        setLastTick(nextTickState);
+        setTimeout(() => setLastTick({}), 1000);
+
+        const nextChart = [...(row.chart || []).slice(1), newPrice];
+        const nextRsi = calculateRSI(nextChart);
+
+        next[targetIdx] = {
+          ...row,
+          price: newPrice,
+          percent: Number(event.change ?? row.percent),
+          volume: Number(event.volume ?? row.volume),
+          chart: nextChart,
+          rsiVal: nextRsi.toFixed(1),
+          tradeScore: calculateTradeScore(newPrice, nextRsi, row.trend, false),
+        };
+        return next;
+      });
+    });
+  }, [on]);
+
+  // Notes loader
   useEffect(() => {
     try {
       const savedNotes = localStorage.getItem(NOTES_KEY);
-      if (savedNotes) {
-        setNotes(JSON.parse(savedNotes));
-      }
-    } catch (e) {
-      console.error("Failed to load notes", e);
-    }
+      if (savedNotes) setNotes(JSON.parse(savedNotes));
+    } catch (e) { console.error("Failed to load notes", e); }
   }, []);
 
+  // Add-ticker search
   useEffect(() => {
-    if (isLoading || rows.length === 0) return;
+    const q = addTickerQuery.trim();
+    if (!q) { setAddTickerResults([]); return; }
+    let active = true;
+    const t = setTimeout(async () => {
+      setAddTickerLoading(true);
+      try {
+        const res = await fetchUniversalSymbolSearch(q, 8);
+        if (active) setAddTickerResults(Array.isArray(res) ? res : []);
+      } catch { if (active) setAddTickerResults([]); }
+      finally { if (active) setAddTickerLoading(false); }
+    }, 250);
+    return () => { active = false; clearTimeout(t); };
+  }, [addTickerQuery]);
 
-    const interval = setInterval(() => {
-      setRows(prevRows => {
-        const count = Math.min(prevRows.length, 2 + Math.floor(Math.random() * 2));
-        const indices = new Set();
-        while (indices.size < count) indices.add(Math.floor(Math.random() * prevRows.length));
-
-        const nextTickState = {};
-        const nextRows = prevRows.map((row, idx) => {
-          if (!indices.has(idx)) return row;
-
-          const change = 1 + (Math.random() * 0.003 - 0.0015); // +/-0.15% fluctuation
-          const nextPrice = row.price * change;
-          const tickDir = nextPrice > row.price ? 'up' : 'down';
-          nextTickState[row.symbol] = tickDir;
-
-          const nextChart = [...row.chart.slice(1), nextPrice];
-          const nextRsi = calculateRSI(nextChart);
-          
-          return {
-            ...row,
-            price: nextPrice,
-            percent: row.percent + (change - 1) * 100,
-            chart: nextChart,
-            rsi: nextRsi,
-            tradeScore: calculateTradeScore(nextPrice, nextRsi, row.trend, nextPrice > row.price * 1.001),
-            aiInsight: generateAIInsight(row.symbol, row.tradeScore, row.signals, row.trend),
-          };
-        });
-
-        setLastTick(nextTickState);
-        setTimeout(() => setLastTick({}), 1000); // Reset tick anim state
-
-        return nextRows;
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [isLoading, rows.length]);
-
+  // Close add-ticker dropdown on outside click
   useEffect(() => {
-    if (!isLoading && rows.length > 0) {
-      localStorage.setItem(WATCHLIST_KEY, JSON.stringify(rows));
-    }
-  }, [rows.length, isLoading]);
+    const handler = (e) => {
+      if (addTickerRef.current && !addTickerRef.current.contains(e.target)) {
+        setAddTickerOpen(false);
+        setAddTickerQuery('');
+        setAddTickerResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const pushNotice = (text, action = null) => {
     setUiNotice({ text, action });
@@ -486,15 +542,71 @@ const AdvancedWatchlist = ({ onSymbolSelect }) => {
               >
                 <SlidersHorizontal size={12} /> Sort: {sortBy}
               </button>
-              <button 
-                onClick={() => {
-                  pushNotice("Adding random ticker...");
-                  setRows(prev => [...prev, buildDecoratedRow(EXTRA_MOCK_ROWS[Math.floor(Math.random() * EXTRA_MOCK_ROWS.length)])]);
-                }}
-                className="flex items-center gap-2 px-4 h-10 bg-cyan-600 text-white rounded-xl text-xs font-black shadow-lg shadow-cyan-900/40 hover:bg-cyan-500 transition-all"
-              >
-                <Plus size={14} /> ADD TICKER
-              </button>
+              <div className="relative" ref={addTickerRef}>
+                <button
+                  onClick={() => setAddTickerOpen(v => !v)}
+                  className="flex items-center gap-2 px-4 h-10 bg-cyan-600 text-white rounded-xl text-xs font-black shadow-lg shadow-cyan-900/40 hover:bg-cyan-500 transition-all"
+                >
+                  <Plus size={14} /> ADD TICKER
+                </button>
+                {addTickerOpen && (
+                  <div className="absolute top-12 right-0 w-72 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                    <div className="p-2 border-b border-white/5 flex items-center gap-2">
+                      <Search size={13} className="text-slate-500" />
+                      <input
+                        autoFocus
+                        value={addTickerQuery}
+                        onChange={e => setAddTickerQuery(e.target.value)}
+                        placeholder="Search symbol..."
+                        className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-slate-600"
+                      />
+                      {addTickerQuery && (
+                        <button onClick={() => setAddTickerQuery('')}><X size={12} className="text-slate-500" /></button>
+                      )}
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {addTickerLoading && <p className="px-4 py-3 text-xs text-slate-500">Searching...</p>}
+                      {!addTickerLoading && addTickerResults.length === 0 && addTickerQuery && (
+                        <p className="px-4 py-3 text-xs text-slate-500">No results found.</p>
+                      )}
+                      {addTickerResults.map(item => {
+                        const sym = String(item?.symbol || '').replace(/\.(NS|BO)$/i, '');
+                        const alreadyAdded = rows.some(r => r.symbol === sym);
+                        return (
+                          <button
+                            key={sym}
+                            disabled={alreadyAdded}
+                            onClick={async () => {
+                              if (alreadyAdded) return;
+                              const base = normalizeMarketRow({ symbol: sym, company: item.name });
+                              const newRow = buildDecoratedRow(base);
+                              setRows(prev => [...prev, newRow]);
+                              pushNotice(`${sym} added to watchlist`);
+                              setAddTickerOpen(false);
+                              setAddTickerQuery('');
+                              setAddTickerResults([]);
+                              // Persist to backend if authenticated
+                              if (watchlistId) {
+                                try { await api.post(`/watchlists/${watchlistId}/add`, { symbol: sym }); }
+                                catch (e) { console.warn('Failed to persist symbol:', e.message); }
+                              }
+                            }}
+                            className={`w-full text-left px-4 py-2.5 flex items-center justify-between border-b border-white/5 transition-colors ${
+                              alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'
+                            }`}
+                          >
+                            <div>
+                              <p className="text-xs font-black text-white">{sym}</p>
+                              <p className="text-[10px] text-slate-500">{item.name}</p>
+                            </div>
+                            {alreadyAdded && <span className="text-[9px] text-cyan-400 font-bold">ADDED</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
            </div>
         </div>
 

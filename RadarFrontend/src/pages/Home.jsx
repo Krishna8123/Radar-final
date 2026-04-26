@@ -13,7 +13,7 @@ import Preloader from '../components/common/Preloader';
 const Navbar = () => (
     <div className="absolute top-6 left-0 right-0 z-50 flex justify-center px-4">
         <nav className="w-full max-w-7xl flex justify-between items-center backdrop-blur-xl bg-gradient-light rounded-2xl pl-6 pr-3 py-2 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-300">
-            {}
+            { }
             <div className="flex items-center gap-3">
                 <div className="relative">
                     <img
@@ -25,14 +25,14 @@ const Navbar = () => (
                 <span className="text-xl font-black text-gradient-dark tracking-tighter font-['Plus_Jakarta_Sans']">RADAR</span>
             </div>
 
-            {}
+            { }
             <div className="hidden lg:flex items-center gap-8 text-sm font-bold text-gradient-dark absolute left-1/2 -translate-x-1/2">
                 <a href="#global-assets" className="hover-text-teal transition-colors duration-300">Edge</a>
                 <a href="#trader-mode" className="hover-text-teal transition-colors duration-300">Platform</a>
                 <a href="#features-section" className="hover-text-teal transition-colors duration-300">Insights</a>
             </div>
 
-            {}
+            { }
             <div className="flex items-center gap-2">
                 <a href="/login" className="btn-gradient-light px-6 py-2.5 rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-white/10">
                     <span className="text-gradient-dark">Log In</span>

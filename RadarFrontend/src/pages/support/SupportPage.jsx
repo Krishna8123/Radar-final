@@ -119,14 +119,7 @@ export default function SupportPage() {
   const [latencyMs, setLatencyMs] = useState(108);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLatencyMs((prev) => {
-        const next = prev + (Math.random() > 0.5 ? 8 : -7);
-        return Math.max(86, Math.min(220, next));
-      });
-    }, 2600);
-
-    return () => clearInterval(interval);
+    // Latency is now static or could be fetched from a health endpoint in the future
   }, []);
 
   const filteredFaqs = useMemo(() => {

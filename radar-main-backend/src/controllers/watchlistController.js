@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-const User = require('../models/User');
-
-const getWatchlist = async (req, res) => {
-    try {
-        const user = req.user; 
-        res.json(user.watchlist);
-    } catch (error) {
-        res.status(500).json({ error: "Server error" });
-=======
 const Watchlist = require('../models/Watchlist');
 
 const getWatchlists = async (req, res) => {
@@ -36,33 +26,10 @@ const createWatchlist = async (req, res) => {
             return res.status(400).json({ error: "Watchlist with this name already exists" });
         }
         res.status(500).json({ error: "Failed to create watchlist" });
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
     }
 };
 
 const addToWatchlist = async (req, res) => {
-<<<<<<< HEAD
-    const { symbol, assetType, name } = req.body;
-
-    if (!symbol || !assetType) {
-        return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    try {
-        const user = req.user;
-
-        const exists = user.watchlist.find(item => item.symbol === symbol);
-        if (exists) {
-            return res.status(400).json({ error: "Asset already in watchlist" });
-        }
-
-        user.watchlist.push({ symbol, assetType, name });
-        await user.save();
-
-        res.json(user.watchlist);
-    } catch (error) {
-        console.error(error);
-=======
     const { id } = req.params;
     const { symbol } = req.body;
 
@@ -79,23 +46,11 @@ const addToWatchlist = async (req, res) => {
         await watchlist.save();
         res.json(watchlist);
     } catch (error) {
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
         res.status(500).json({ error: "Failed to add to watchlist" });
     }
 };
 
 const removeFromWatchlist = async (req, res) => {
-<<<<<<< HEAD
-    const { symbol } = req.params;
-
-    try {
-        const user = req.user;
-
-        user.watchlist = user.watchlist.filter(item => item.symbol !== symbol);
-        await user.save();
-
-        res.json(user.watchlist);
-=======
     const { id, symbol } = req.params;
 
     try {
@@ -105,14 +60,9 @@ const removeFromWatchlist = async (req, res) => {
         watchlist.items = watchlist.items.filter(item => item.symbol !== symbol.toUpperCase());
         await watchlist.save();
         res.json(watchlist);
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
     } catch (error) {
         res.status(500).json({ error: "Failed to remove from watchlist" });
     }
 };
 
-<<<<<<< HEAD
-module.exports = { getWatchlist, addToWatchlist, removeFromWatchlist };
-=======
 module.exports = { getWatchlists, createWatchlist, addToWatchlist, removeFromWatchlist };
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627

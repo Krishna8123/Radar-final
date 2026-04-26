@@ -3,14 +3,18 @@ const axios = require('axios');
 const BINANCE_BASE_URL = 'https://api.binance.com';
 const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
 const COINMARKETCAP_BASE_URL = 'https://pro-api.coinmarketcap.com/v1';
-const DEFAULT_PAIRS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
-
+const DEFAULT_PAIRS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'DOTUSDT', 'DOGEUSDT', 'MATICUSDT', 'LINKUSDT'];
 const PAIR_META = {
     BTCUSDT: { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
     ETHUSDT: { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
     SOLUSDT: { id: 'solana', symbol: 'sol', name: 'Solana' },
     XRPUSDT: { id: 'ripple', symbol: 'xrp', name: 'XRP' },
     BNBUSDT: { id: 'binancecoin', symbol: 'bnb', name: 'BNB' },
+    ADAUSDT: { id: 'cardano', symbol: 'ada', name: 'Cardano' },
+    DOTUSDT: { id: 'polkadot', symbol: 'dot', name: 'Polkadot' },
+    DOGEUSDT: { id: 'dogecoin', symbol: 'doge', name: 'Dogecoin' },
+    MATICUSDT: { id: 'matic-network', symbol: 'matic', name: 'Polygon' },
+    LINKUSDT: { id: 'chainlink', symbol: 'link', name: 'Chainlink' },
 };
 
 const toBinancePair = (value = 'BTC') => {
@@ -87,91 +91,53 @@ const fetchCryptoData = async () => {
             };
         });
     } catch (error) {
-        console.error('Binance crypto fetch failed, trying CoinGecko:', error.message);
+        console.error('Binance crypto fetch failed, trying CoinMarketCap:', error.message);
+        if (!process.env.COINMARKETCAP_API_KEY) {
+            return [];
+        }
         try {
-            const ids = Object.values(PAIR_META).map((item) => item.id).join(',');
-            const response = await axios.get(`${COINGECKO_BASE_URL}/coins/markets`, {
+            const response = await axios.get(`${COINMARKETCAP_BASE_URL}/cryptocurrency/quotes/latest`, {
                 params: {
-                    vs_currency: 'usd',
-                    ids,
-                    order: 'market_cap_desc',
-                    per_page: 20,
-                    page: 1,
-                    sparkline: false,
-                    price_change_percentage: '24h',
+                    symbol: 'BTC,ETH,SOL,XRP,BNB',
+                    convert: 'USD',
                 },
-                timeout: 6000,
-                headers: process.env.COINGECKO_API_KEY
-                    ? { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }
-                    : undefined,
+                timeout: 7000,
+                headers: {
+                    'X-CMC_PRO_API_KEY': process.env.COINMARKETCAP_API_KEY,
+                },
             });
 
-            const rows = Array.isArray(response.data) ? response.data : [];
-            return rows.map((coin) => ({
-                id: coin.id,
-                symbol: String(coin.symbol || '').toLowerCase(),
-                name: coin.name,
-                current_price: Number(coin.current_price) || 0,
-                price_change_percentage_24h: Number(coin.price_change_percentage_24h) || 0,
-                market_cap: Number(coin.market_cap) || null,
-                total_volume: Number(coin.total_volume) || 0,
-                image: coin.image || null,
-                details: {
-                    sector: 'Blockchain',
-                    market_cap: Number(coin.market_cap) > 0 ? `$${(Number(coin.market_cap) / 1e9).toFixed(2)}B` : 'N/A',
-                    about: `${coin.name} market data sourced from CoinGecko.`,
-                    volume: Number(coin.total_volume) > 0 ? `$${(Number(coin.total_volume) / 1e6).toFixed(2)}M` : 'N/A',
-                }
-            }));
-        } catch (fallbackError) {
-            console.error('CoinGecko crypto fetch failed, trying CoinMarketCap:', fallbackError.message);
-            if (!process.env.COINMARKETCAP_API_KEY) {
-                return [];
-            }
-            try {
-                const response = await axios.get(`${COINMARKETCAP_BASE_URL}/cryptocurrency/quotes/latest`, {
-                    params: {
-                        symbol: 'BTC,ETH,SOL,XRP,BNB',
-                        convert: 'USD',
-                    },
-                    timeout: 7000,
-                    headers: {
-                        'X-CMC_PRO_API_KEY': process.env.COINMARKETCAP_API_KEY,
-                    },
-                });
+            const data = response.data?.data || {};
+            const order = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB'];
+            return order
+                .map((sym) => {
+                    const row = data[sym];
+                    const quote = row?.quote?.USD;
+                    if (!row || !quote) {
+                        return null;
+                    }
 
-                const data = response.data?.data || {};
-                const order = ['BTC', 'ETH', 'SOL', 'XRP', 'BNB'];
-                return order
-                    .map((sym) => {
-                        const row = data[sym];
-                        const quote = row?.quote?.USD;
-                        if (!row || !quote) {
-                            return null;
+                    return {
+                        id: String(row.slug || sym).toLowerCase(),
+                        symbol: String(row.symbol || sym).toLowerCase(),
+                        name: row.name || sym,
+                        current_price: Number(quote.price) || 0,
+                        price_change_percentage_24h: Number(quote.percent_change_24h) || 0,
+                        market_cap: Number(quote.market_cap) || null,
+                        total_volume: Number(quote.volume_24h) || 0,
+                        image: null,
+                        details: {
+                            sector: 'Blockchain',
+                            market_cap: Number(quote.market_cap) > 0 ? `$${(Number(quote.market_cap) / 1e9).toFixed(2)}B` : 'N/A',
+                            about: `${row.name || sym} market data sourced from CoinMarketCap.`,
+                            volume: Number(quote.volume_24h) > 0 ? `$${(Number(quote.volume_24h) / 1e6).toFixed(2)}M` : 'N/A',
                         }
-
-                        return {
-                            id: String(row.slug || sym).toLowerCase(),
-                            symbol: String(row.symbol || sym).toLowerCase(),
-                            name: row.name || sym,
-                            current_price: Number(quote.price) || 0,
-                            price_change_percentage_24h: Number(quote.percent_change_24h) || 0,
-                            market_cap: Number(quote.market_cap) || null,
-                            total_volume: Number(quote.volume_24h) || 0,
-                            image: null,
-                            details: {
-                                sector: 'Blockchain',
-                                market_cap: Number(quote.market_cap) > 0 ? `$${(Number(quote.market_cap) / 1e9).toFixed(2)}B` : 'N/A',
-                                about: `${row.name || sym} market data sourced from CoinMarketCap.`,
-                                volume: Number(quote.volume_24h) > 0 ? `$${(Number(quote.volume_24h) / 1e6).toFixed(2)}M` : 'N/A',
-                            }
-                        };
-                    })
-                    .filter(Boolean);
-            } catch (cmcError) {
-                console.error('CoinMarketCap crypto fetch failed:', cmcError.message);
-                return [];
-            }
+                    };
+                })
+                .filter(Boolean);
+        } catch (cmcError) {
+            console.error('CoinMarketCap crypto fetch failed:', cmcError.message);
+            return [];
         }
     }
 };
@@ -194,41 +160,8 @@ const fetchCryptoHistory = async (symbol, interval) => {
             price: Number(candle[4]),
         }));
     } catch (error) {
-        console.error('Binance crypto history fetch failed, trying CoinGecko:', error.message);
-        try {
-            const pair = toBinancePair(symbol);
-            const coinId = PAIR_META[pair]?.id || String(symbol || '').toLowerCase();
-            const daysMap = {
-                '1D': 1,
-                '1W': 7,
-                '1M': 30,
-                '3M': 90,
-                '6M': 180,
-                '1Y': 365,
-            };
-            const days = daysMap[String(interval || '1M').toUpperCase()] || 30;
-
-            const response = await axios.get(`${COINGECKO_BASE_URL}/coins/${coinId}/market_chart`, {
-                params: {
-                    vs_currency: 'usd',
-                    days,
-                    interval: days <= 1 ? 'hourly' : 'daily',
-                },
-                timeout: 6000,
-                headers: process.env.COINGECKO_API_KEY
-                    ? { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY }
-                    : undefined,
-            });
-
-            const prices = Array.isArray(response.data?.prices) ? response.data.prices : [];
-            return prices.map((point) => ({
-                date: new Date(point[0]).toLocaleString(),
-                price: Number(point[1]),
-            })).filter((item) => Number.isFinite(item.price));
-        } catch (fallbackError) {
-            console.error('CoinGecko crypto history fetch failed:', fallbackError.message);
-            return [];
-        }
+        console.error('Binance crypto history fetch failed:', error.message);
+        return [];
     }
 };
 

@@ -14,6 +14,7 @@ const WATCHLIST_SYMBOLS = ['AAPL', 'MSFT'];
 
 const TraderProfilePage = () => {
   const navigate = useNavigate();
+  const { profile } = useHeaderData();
   const [quotes, setQuotes] = useState(fallbackQuotes);
   const [quotesLoading, setQuotesLoading] = useState(true);
 
@@ -61,8 +62,8 @@ const TraderProfilePage = () => {
     <main className="trader-profile-page">
       <div className="trader-profile-shell">
         <ProfileHeader
-          name={profileData.name}
-          email={profileData.email}
+          name={profile?.username || profileData.name}
+          email={profile?.email || profileData.email}
           status={profileData.status}
           onBack={() => navigate('/dashboard/trader')}
         />

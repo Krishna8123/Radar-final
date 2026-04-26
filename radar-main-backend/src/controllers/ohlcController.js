@@ -10,11 +10,6 @@ const getHistoricalData = asyncHandler(async (req, res) => {
         timeframe = '1d',
         startDate,
         endDate,
-<<<<<<< HEAD
-        limit = 365,
-    } = req.query;
-
-=======
         from,
         to,
         limit = 365,
@@ -23,7 +18,6 @@ const getHistoricalData = asyncHandler(async (req, res) => {
     const actualStartDate = from || startDate;
     const actualEndDate = to || endDate;
 
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
     if (!symbol) {
         res.status(400);
         throw new Error('Symbol is required');
@@ -33,13 +27,8 @@ const getHistoricalData = asyncHandler(async (req, res) => {
         symbol,
         exchange,
         timeframe,
-<<<<<<< HEAD
-        startDate,
-        endDate,
-=======
         startDate: actualStartDate,
         endDate: actualEndDate,
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
         limit: parseInt(limit),
     });
 
@@ -92,21 +81,12 @@ const getLatestCandle = asyncHandler(async (req, res) => {
 
 const getAvailableSymbols = asyncHandler(async (req, res) => {
     const { exchange } = req.query;
-<<<<<<< HEAD
-
     const result = await ohlcService.getAvailableSymbols(exchange);
-
-=======
-    const result = await ohlcService.getAvailableSymbols(exchange);
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
     if (!result.success) {
         res.status(500);
         throw new Error('Failed to fetch available symbols');
     }
-<<<<<<< HEAD
 
-=======
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
     res.json({
         success: true,
         count: result.count,
@@ -115,8 +95,6 @@ const getAvailableSymbols = asyncHandler(async (req, res) => {
     });
 });
 
-<<<<<<< HEAD
-=======
 const getCompareData = asyncHandler(async (req, res) => {
     const { symbols, from, to, timeframe = '1d' } = req.body;
 
@@ -142,13 +120,9 @@ const getCompareData = asyncHandler(async (req, res) => {
     res.json(results);
 });
 
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 module.exports = {
     getHistoricalData,
     getLatestCandle,
     getAvailableSymbols,
-<<<<<<< HEAD
-=======
     getCompareData
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 };

@@ -17,26 +17,30 @@ import {
     Info,
     Check,
     ArrowUpRight,
-    Zap
+    Zap,
+    RefreshCw
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { runScreenerScan } from '../../api/screenerApi';
+import { useNavigate } from 'react-router-dom';
 
-const mockReadyMade = [
-    { id: 1, title: 'Consistent Growers', desc: '15%+ profit growth over 3 years.', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { id: 2, title: 'Strong Financials', desc: 'Low debt, high cash flow.', icon: Banknote, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { id: 3, title: 'Value Picks', desc: 'Trading below intrinsic value.', icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-50' },
-    { id: 4, title: 'Dividend Kings', desc: 'Companies with 10yr+ dividend history.', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { id: 5, title: 'Debt-Free Leaders', desc: 'Zero debt balance sheet giants.', icon: Zap, color: 'text-red-500', bg: 'bg-red-50' },
-    { id: 6, title: 'Institutional Favorites', desc: 'Highest FII/DII accumulation.', icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-    { id: 7, title: 'ESG Leaders', desc: 'High sustainability & governance scores.', icon: ShieldCheck, color: 'text-teal-500', bg: 'bg-teal-50' },
-    { id: 8, title: 'Tech Disruptors', desc: 'High R&D spend in emerging tech.', icon: BarChart3, color: 'text-cyan-500', bg: 'bg-cyan-50' },
+const MOCK_READY_MADE = [
+    { id: 'div', title: 'Dividend Giants', desc: 'Top yield names with stable cash flows and 5Y growth.', icon: Banknote, color: 'text-emerald-600', bg: 'bg-emerald-50', filters: { yield: '> 3%', mcap: 'Large' } },
+    { id: 'it', title: 'IT Breakouts', desc: 'Volume leaders in tech with RSI momentum signals.', icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50', filters: { sector: 'IT', volume: 'High' } },
+    { id: 'value', title: 'Deep Value Gems', desc: 'Lowest P/E stocks with positive earnings surprises.', icon: ShieldCheck, color: 'text-purple-600', bg: 'bg-purple-50', filters: { pe: 'Low (<15)', roe: '> 15%' } }
 ];
 
-const mockResults = [
-    { id: 'TCS', name: 'Tata Consultancy Services', price: 'â‚¹3,542.10', change: '+1.2%', isPositive: true, mcap: '12.4T', sector: 'IT Services', why: 'Strong 200-DMA support with 15% ROE.', tags: ['Value', 'Low Risk'], confidence: 92, yield: '1.2%', beta: 0.85, volume: '2.4M', pe: 28.5, roe: '24.1%', trend: [3500, 3520, 3510, 3530, 3542] },
-    { id: 'HINDUNILVR', name: 'Hindustan Unilever', price: 'â‚¹2,410.50', change: '-0.4%', isPositive: false, mcap: '5.6T', sector: 'FMCG', why: 'Overbought on daily RSI, holding support.', tags: ['Defensive'], confidence: 85, yield: '1.5%', beta: 0.62, volume: '1.8M', pe: 54.2, roe: '18.5%', trend: [2450, 2440, 2430, 2420, 2410] },
-    { id: 'ITC', name: 'ITC Limited', price: 'â‚¹415.80', change: '+2.1%', isPositive: true, mcap: '5.1T', sector: 'FMCG', why: 'Breakout above monthly consolidation.', tags: ['Momentum', 'Yield'], confidence: 88, yield: '3.4%', beta: 0.74, volume: '8.2M', pe: 24.8, roe: '29.2%', trend: [400, 405, 408, 412, 415] },
-    { id: 'INFY', name: 'Infosys Ltd', price: 'â‚¹1,440.00', change: '+0.8%', isPositive: true, mcap: '5.9T', sector: 'IT Services', why: 'Institutional accumulation detected.', tags: ['Momentum'], confidence: 90, yield: '1.0%', beta: 1.12, volume: '3.6M', pe: 22.1, roe: '26.4%', trend: [1420, 1425, 1435, 1430, 1440] },
+const MOCK_FALLBACK_RESULTS = [
+    { 
+        id: 'HDFCBANK.NS', price: 'â‚¹1,652', change: '+0.4%', isPositive: true, sector: 'Finance', mcap: '12.5T', pe: '18.2', roe: '16.5%', yield: '1.2%', confidence: 92,
+        why: 'Price testing major demand zone with high institutional delivery.', 
+        tags: ['Value', 'Large Cap'], trend: [1640, 1645, 1642, 1650, 1648, 1652]
+    },
+    { 
+        id: 'RELIANCE.NS', price: 'â‚¹2,985', change: '+1.1%', isPositive: true, sector: 'Energy', mcap: '20.1T', pe: '24.5', roe: '14.2%', yield: '0.8%', confidence: 85,
+        why: 'Breakout above 20-day EMA on increased relative volume.', 
+        tags: ['Momentum', 'Bluechip'], trend: [2950, 2960, 2975, 2980, 2970, 2985]
+    }
 ];
 
 const strategies = [
@@ -70,14 +74,21 @@ const allFilters = [
 ];
 
 
-const Screeners = ({ isHero = false }) => {
-    const [activeFilters, setActiveFilters] = useState({});
+const Screeners = ({ isHero = false, initialFilters = {} }) => {
+    const [activeFilters, setActiveFilters] = useState(initialFilters);
     const [visibleFilters, setVisibleFilters] = useState(['mcap', 'price', 'change', 'sector', 'roe', 'pe']);
     const [activeStrategy, setActiveStrategy] = useState(null);
     const [openFilter, setOpenFilter] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSignalModal, setShowSignalModal] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [results, setResults] = useState(() => {
+        const cached = localStorage.getItem('radar_screener_results');
+        return cached ? JSON.parse(cached) : MOCK_FALLBACK_RESULTS;
+    });
+    const [readyMade, setReadyMade] = useState(MOCK_READY_MADE);
+    const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
     const userMode = localStorage.getItem('mode') || 'INVESTOR';
 
     const handleFilterChange = (id, value) => {
@@ -99,16 +110,42 @@ const Screeners = ({ isHero = false }) => {
         setOpenFilter(null);
     };
 
-    const filteredResults = mockResults.filter(stock => {
-        if (searchTerm && !stock.id.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    const filteredResults = results.filter(stock => {
+        const stockId = stock.id || '';
+        if (searchTerm && !stockId.toLowerCase().includes(searchTerm.toLowerCase())) return false;
         if (activeFilters.mcap && activeFilters.mcap !== 'Any') {
-            if (activeFilters.mcap === 'Large' && !stock.mcap.includes('T')) return false;
+            if (activeFilters.mcap === 'Large' && !stock.mcap?.includes('T')) return false;
         }
         if (activeFilters.sector && activeFilters.sector !== 'All') {
-            if (!stock.sector.includes(activeFilters.sector)) return false;
+            if (!stock.sector?.includes(activeFilters.sector)) return false;
         }
         return true;
     });
+
+    const runScan = async () => {
+        try {
+            setIsLoading(true);
+            const data = await runScreenerScan(activeFilters);
+            if (data && Array.isArray(data) && data.length > 0) {
+                setResults(data);
+                localStorage.setItem('radar_screener_results', JSON.stringify(data));
+            }
+        } catch (err) {
+            console.error("Screener scan failed:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        // Initial scan if we have filters or if cache is empty
+        if (Object.keys(activeFilters).length > 0) {
+            runScan();
+        } else if (results.length === 0 || results === MOCK_FALLBACK_RESULTS) {
+            // Trigger a default scan to get real data if we only have mocks
+            runScan();
+        }
+    }, [activeFilters]);
 
     React.useEffect(() => {
         const style = document.createElement('style');
@@ -360,10 +397,14 @@ const Screeners = ({ isHero = false }) => {
                             <button className="text-[12px] font-black text-blue-600 uppercase tracking-widest hover:underline">View All</button>
                         </div>
                         <div className="horizontal-carousel">
-                            {mockReadyMade.map(item => {
+                            {readyMade.map(item => {
                                 const Icon = item.icon || Activity;
                                 return (
-                                    <div key={item.id} className="min-w-[300px] bg-white border border-slate-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                                    <div 
+                                        key={item.id} 
+                                        onClick={() => handleFilterChange('preset', item.id)}
+                                        className="min-w-[300px] bg-white border border-slate-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                                    >
                                         <div className="flex items-center gap-4 mb-3">
                                             <div className={`p-2.5 rounded-xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform shadow-sm`}>
                                                 <Icon size={20} strokeWidth={3} />
@@ -401,6 +442,14 @@ const Screeners = ({ isHero = false }) => {
                                     <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm text-xs font-bold text-slate-600">
                                         Matches: <span className="text-blue-600">{filteredResults.length}</span>
                                     </div>
+                                    <button 
+                                        onClick={runScan}
+                                        disabled={isLoading}
+                                        className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
+                                    >
+                                        <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+                                        {isLoading ? "Scanning..." : "Refresh Results"}
+                                    </button>
                                     <button className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-blue-700 transition-all">Export Report</button>
                                 </div>
                             </div>

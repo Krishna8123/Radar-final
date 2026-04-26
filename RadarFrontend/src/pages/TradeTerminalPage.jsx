@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MinimalTraderChart from '../components/trader/stockResearch/MinimalTraderChart';
-import { stockResearchMock } from '../data/stockResearchMock';
+import api from '../api/api';
 import { ChevronLeft, BarChart2, TrendingUp, TrendingDown, Layers, Zap, Clock, ShieldAlert, Activity } from 'lucide-react';
 
 // Reusable Antigravity Card ensuring solid dark UI with no transparency
@@ -27,53 +27,71 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
     const [isLoading, setIsLoading] = useState(true);
     const [timeframe, setTimeframe] = useState('5m');
     const [chartType, setChartType] = useState('candles');
-    const [orderType, setOrderType] = useState('BUY'); // BUY | SELL
-    const [orderCategory, setOrderCategory] = useState('MARKET'); // MARKET | LIMIT
+    const [orderType, setOrderType] = useState('BUY');
+    const [orderCategory, setOrderCategory] = useState('MARKET');
     const [qty, setQty] = useState(1);
     const [priceInput, setPriceInput] = useState('');
+    const [stock, setStock] = useState({ symbol, price: 0, changePercent: 0, name: '' });
+    const [quickWatchlist, setQuickWatchlist] = useState([]);
+    const [marketDepth, setMarketDepth] = useState({ bids: [], asks: [] });
 
-    const stock = { ...stockResearchMock.stock, symbol, price: 2985.45, changePercent: 1.25 };
     const isPositive = Number(stock.changePercent || 0) >= 0;
 
     useEffect(() => {
         setIsLoading(true);
-        setPriceInput(stock.price.toString());
-        const timer = window.setTimeout(() => {
+        let active = true;
+
+        Promise.allSettled([
+            api.get(`/market?symbols=${encodeURIComponent(symbol)}`),
+            api.get('/watchlists'),
+            api.get(`/market/depth?symbol=${encodeURIComponent(symbol)}`),
+        ]).then(([mktRes, wlRes, depthRes]) => {
+            if (!active) return;
+
+            // Stock quote
+            const mktArr = mktRes.status === 'fulfilled' ? (mktRes.value?.data?.data ?? mktRes.value?.data ?? []) : [];
+            const mkt = Array.isArray(mktArr) ? mktArr[0] : mktArr;
+            if (mkt) {
+                const price = Number(mkt.price ?? mkt.ltp ?? 0);
+                setStock({ symbol: symbol.replace(/\.(NS|BO)$/i, ''), name: mkt.name ?? mkt.companyName ?? symbol, price, changePercent: Number(mkt.changePercent ?? mkt.pChange ?? 0), dayHigh: mkt.dayHigh, dayLow: mkt.dayLow, volume: mkt.volume, vwap: mkt.vwap });
+                setPriceInput(String(price));
+            }
+
+            // Watchlist
+            if (wlRes.status === 'fulfilled') {
+                const wlData = wlRes.value?.data?.data ?? wlRes.value?.data;
+                const syms = (Array.isArray(wlData) ? wlData.flatMap(w => w.symbols ?? w.stocks ?? []) : []).slice(0, 8);
+                if (syms.length > 0) {
+                    api.get(`/market?symbols=${encodeURIComponent(syms.join(','))}`)
+                        .then(r => {
+                            const arr = r.data?.data ?? r.data ?? [];
+                            if (Array.isArray(arr) && arr.length && active) {
+                                setQuickWatchlist(arr.map(q => ({
+                                    symbol: String(q.symbol || '').replace(/\.(NS|BO)$/i, ''),
+                                    price: Number(q.price ?? q.ltp ?? 0),
+                                    change: Number(q.changePercent ?? q.pChange ?? 0),
+                                })));
+                            }
+                        }).catch(() => {});
+                }
+            }
+
+            // Depth
+            if (depthRes.status === 'fulfilled') {
+                const d = depthRes.value?.data?.data ?? depthRes.value?.data;
+                if (d?.bids && d?.asks) setMarketDepth(d);
+            }
+
             setIsLoading(false);
-        }, 300);
-        return () => window.clearTimeout(timer);
+        });
+
+        return () => { active = false; };
     }, [symbol]);
 
-    // Dummy Watchlist
-    const quickWatchlist = [
-        { symbol: 'RELIANCE', price: 2985.45, change: 1.25 },
-        { symbol: 'HDFCBANK', price: 1450.20, change: -0.45 },
-        { symbol: 'INFY', price: 1620.10, change: 2.10 },
-        { symbol: 'TCS', price: 3910.05, change: 0.85 },
-        { symbol: 'ICICIBANK', price: 1045.60, change: 1.15 },
-        { symbol: 'SBIN', price: 765.40, change: -1.20 },
-        { symbol: 'ITC', price: 420.80, change: 0.30 },
-        { symbol: 'LT', price: 3450.25, change: 1.80 },
-    ];
-
-    // Dummy Market Depth
-    const marketDepth = {
-        bids: [
-            { price: 2985.40, qty: 1250 },
-            { price: 2985.35, qty: 3400 },
-            { price: 2985.30, qty: 1800 },
-            { price: 2985.25, qty: 5600 },
-            { price: 2985.20, qty: 2100 },
-        ],
-        asks: [
-            { price: 2985.50, qty: 850 },
-            { price: 2985.55, qty: 2200 },
-            { price: 2985.60, qty: 4100 },
-            { price: 2985.65, qty: 1500 },
-            { price: 2985.70, qty: 3800 },
-        ]
-    };
-    const maxDepthQty = Math.max(...marketDepth.bids.map(b => b.qty), ...marketDepth.asks.map(a => a.qty));
+    const maxDepthQty = Math.max(
+        ...( marketDepth.bids.length ? marketDepth.bids.map(b => b.qty) : [1]),
+        ...( marketDepth.asks.length ? marketDepth.asks.map(a => a.qty) : [1])
+    );
 
     if (isLoading) {
         return (
@@ -195,12 +213,12 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1.5">
                                     <Zap size={14} className="text-amber-400" /> Active Signal
                                 </h3>
-                                <div className="text-xl font-black text-emerald-400">STRONG BUY</div>
+                                <div className="text-xl font-black text-slate-500 italic">No active signal</div>
                             </div>
                             <div className="text-right">
                                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Trend Strength</div>
                                 <div className="w-32 h-2 bg-[#101828] rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500" style={{ width: '85%' }}></div>
+                                    <div className="h-full bg-slate-700" style={{ width: '0%' }}></div>
                                 </div>
                             </div>
                         </AntigravityCard>
@@ -210,7 +228,7 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1.5">
                                     <ShieldAlert size={14} className="text-cyan-400" /> Price Alerts
                                 </h3>
-                                <div className="text-sm font-bold text-white">Cross Above ₹ 3,000</div>
+                                <div className="text-sm font-bold text-slate-500 italic">No alerts set</div>
                             </div>
                             <button className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold hover:bg-white/10 transition-colors">
                                 Set Alert

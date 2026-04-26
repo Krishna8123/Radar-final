@@ -2,17 +2,7 @@ import { useEffect, useState, useRef, memo } from "react";
 import { Terminal, Cpu, Zap, BellRing, Target } from "lucide-react";
 
 const INITIAL_LOGS = [
-  { id: 1, time: "09:15:00", symbol: "SYSTEM", message: "Market Terminal 2.0.4 Online. Data-feed established.", type: "neutral" },
-  { id: 2, time: "09:15:02", symbol: "NIFTY", message: "Opening gap up +0.45%. Bullish sentiment predominant.", type: "positive" },
-];
-
-const ACTIONABLE_SIGNALS = [
-  { symbol: "RELIANCE", msg: "🚀 Breakout: 15-min Range with 3x Volume Shocker", type: "positive", prob: "88%" },
-  { symbol: "HDFCBANK", msg: "🚨 Alert: Critical EMA 200 Support breach detected.", type: "negative", prob: "72%" },
-  { symbol: "TCS", msg: "📈 Momentum: Squeeze play forming on 1D timeframe.", type: "positive", prob: "65%" },
-  { symbol: "INFY", msg: "📉 Weakness: Sector rotation away from IT. Sell side pressure.", type: "negative", prob: "91%" },
-  { symbol: "SBIN", msg: "💎 Reversal: Bullish engulfing at support level.", type: "positive", prob: "78%" },
-  { symbol: "TATASTEEL", msg: "🔥 High RVOL: Unusual intraday accumulation.", type: "positive", prob: "84%" },
+  { id: 1, time: new Date().toLocaleTimeString("en-GB", { hour12: false }), symbol: "SYSTEM", message: "Market Terminal 4.2.0 Online. Secure connection established.", type: "neutral" },
 ];
 
 function TerminalLogs({ mode = "standard", scanTimestamp }) {
@@ -30,31 +20,9 @@ function TerminalLogs({ mode = "standard", scanTimestamp }) {
           message: "⚡ TRADER SCAN INITIATED: Synchronizing asset sector parameters...",
             type: "neutral"
         };
-        setLogs(prev => [...prev, newLog]);
+        setLogs(prev => [...prev, newLog].slice(-50));
     }
   }, [scanTimestamp]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const time = now.toLocaleTimeString("en-GB", { hour12: false });
-      
-      const signal = ACTIONABLE_SIGNALS[Math.floor(Math.random() * ACTIONABLE_SIGNALS.length)];
-      
-      const newLog = {
-        id: Date.now(),
-        time,
-        symbol: signal.symbol,
-        message: signal.msg,
-        type: signal.type,
-        prob: signal.prob
-      };
-
-      setLogs((prev) => [...prev.slice(-20), newLog]);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {

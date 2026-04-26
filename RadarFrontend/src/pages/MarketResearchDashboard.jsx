@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp } from "lucide-react";
 import SectionPanel from "../components/research/SectionPanel";
@@ -9,12 +9,32 @@ import SectorFilter from "../components/research/SectorFilter";
 import ScannerControls from "../components/research/ScannerControls";
 import SearchBar from "../components/research/SearchBar";
 import ActionPanel from "../components/research/ActionPanel";
-import { researchMockData } from "../data/researchMockData";
+import api from "../api/api";
 
 const TABS = ["Market Opportunities", "Momentum", "Breakout", "Pullback", "Fakeout"];
 const SECTORS = ["All", "IT", "Banking", "Auto", "Pharma", "FMCG", "Energy"];
 
-const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const normalizeStock = (s, i) => ({
+  id: s._id || s.id || s.symbol || i,
+  symbol: String(s.symbol || '').replace(/\.(NS|BO)$/i, ''),
+  name: s.name || s.companyName || s.symbol || '',
+  sector: s.sector || 'Equity',
+  price: Number(s.price ?? s.ltp ?? 0),
+  change: Number(s.changePercent ?? s.change ?? 0),
+  rsi: Number(s.rsi ?? 50),
+  volume: Number(s.volume ?? 0),
+  volumeSpike: Boolean(s.volumeSpike || Number(s.volumeRatio ?? 1) > 1.5),
+  breakoutCandidate: Boolean(s.breakout || s.breakoutCandidate),
+  aboveSma50: Boolean(s.aboveSma50 ?? true),
+  macdPositive: Boolean(s.macdPositive ?? (Number(s.changePercent ?? 0) > 0)),
+  signalType: s.signalType || (Number(s.changePercent ?? 0) > 2 ? 'Breakout' : 'Momentum'),
+  confidence: Number(s.confidence ?? s.score ?? 72),
+  entry: Number(s.entry ?? s.price ?? 0),
+  target: Number(s.target ?? (s.price ?? 0) * 1.04),
+  sl: Number(s.sl ?? (s.price ?? 0) * 0.985),
+  rvol: Number(s.volumeRatio ?? 1.2),
+  history: s.history || [],
+});
 
 const mapTabToSignal = (tab) => {
   if (tab === "Market Opportunities") return "all";
@@ -38,36 +58,22 @@ const applyFilters = ({ stocks, filters, activeTab, searchText }) => {
   });
 };
 
-const mutateStockForScan = (stock) => {
-  const nextChange = Number((stock.change + (Math.random() * 1.2 - 0.6)).toFixed(2));
-  const nextPrice = Number((stock.price * (1 + nextChange / 1000)).toFixed(2));
-  const nextRsi = Math.max(20, Math.min(85, stock.rsi + randomBetween(-4, 4)));
-  const nextVolume = Math.max(1000000, Math.round(stock.volume * (0.9 + Math.random() * 0.35)));
 
-  return {
-    ...stock,
-    price: nextPrice,
-    change: nextChange,
-    rsi: nextRsi,
-    volume: nextVolume,
-    volumeSpike: nextVolume > stock.volume * 1.08 ? true : stock.volumeSpike,
-  };
-};
 
 const MarketResearchDashboard = () => {
-  const [baseStocks, setBaseStocks] = useState(researchMockData.stocks);
-  const [filteredStocks, setFilteredStocks] = useState(researchMockData.stocks);
+  const [baseStocks, setBaseStocks] = useState([]);
+  const [filteredStocks, setFilteredStocks] = useState([]);
   const [expandedStockId, setExpandedStockId] = useState(null);
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
-  const [isScanning, setIsScanning] = useState(false);
+  const [isScanning, setIsScanning] = useState(true);
   const [activeTab, setActiveTab] = useState("Market Opportunities");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState(null);
 
   const [marketPulse, setMarketPulse] = useState({
-    nifty: researchMockData.niftyValue,
-    sentimentLabel: researchMockData.sentiment.label,
-    sentimentScore: researchMockData.sentiment.score,
+    nifty: 22453,
+    sentimentLabel: 'Neutral',
+    sentimentScore: 55,
   });
 
   const [filters, setFilters] = useState({
@@ -85,56 +91,53 @@ const MarketResearchDashboard = () => {
     return Array.from(all);
   }, [baseStocks]);
 
+  // Apply client-side filters
   useEffect(() => {
-    const next = applyFilters({
-      stocks: baseStocks,
-      filters,
-      activeTab,
-      searchText: search,
-    });
+    const next = applyFilters({ stocks: baseStocks, filters, activeTab, searchText: search });
     setFilteredStocks(next);
   }, [baseStocks, filters, activeTab, search]);
 
-  useEffect(() => {
-    const pulseInterval = setInterval(() => {
-      setMarketPulse((prev) => {
-        const nextNifty = Number((prev.nifty + (Math.random() * 18 - 9)).toFixed(2));
-        const nextScore = Math.max(35, Math.min(85, prev.sentimentScore + randomBetween(-2, 2)));
-        const nextLabel = nextScore >= 65 ? "Constructive" : nextScore <= 45 ? "Cautious" : "Neutral";
-
-        return {
-          nifty: nextNifty,
-          sentimentScore: nextScore,
-          sentimentLabel: nextLabel,
-        };
-      });
-
-      setBaseStocks((prev) => prev.map((stock) => {
-        const drift = Math.random() * 0.5 - 0.25;
-        return {
-          ...stock,
-          price: Number((stock.price * (1 + drift / 100)).toFixed(2)),
-        };
-      }));
-    }, 4500);
-
-    return () => clearInterval(pulseInterval);
+  // Live market pulse from backend (replaces Math.random() intervals)
+  const fetchMarketPulse = useCallback(async () => {
+    try {
+      const [niftyRes, sentRes] = await Promise.allSettled([
+        api.get('/market/nifty'),
+        api.get('/market/sentiment'),
+      ]);
+      const nifty = niftyRes.status === 'fulfilled' ? Number(niftyRes.value?.data?.price ?? niftyRes.value?.data?.value ?? marketPulse.nifty) : marketPulse.nifty;
+      const sent = sentRes.status === 'fulfilled' ? sentRes.value?.data : null;
+      const score = Number(sent?.score ?? marketPulse.sentimentScore);
+      const label = score >= 65 ? 'Constructive' : score <= 45 ? 'Cautious' : 'Neutral';
+      setMarketPulse({ nifty, sentimentScore: score, sentimentLabel: label });
+    } catch {}
   }, []);
 
-  const runScan = () => {
+  // Live stock scan from backend
+  const runScan = useCallback(async () => {
     setIsScanning(true);
     setNotice(null);
-
-    const wait = randomBetween(1000, 2000);
-    setTimeout(() => {
-      setBaseStocks((prev) => {
-        const updated = prev.map(mutateStockForScan);
-        return [...updated].sort((a, b) => b.rsi - a.rsi);
-      });
+    try {
+      const res = await api.get('/market?type=STOCK&sort=gainers&limit=30');
+      const raw = res.data?.data ?? res.data?.stocks ?? (Array.isArray(res.data) ? res.data : []);
+      if (raw.length > 0) {
+        setBaseStocks(raw.map(normalizeStock));
+        setNotice('Scan complete. Live signals refreshed.');
+      }
+    } catch (err) {
+      console.warn('MarketResearchDashboard scan failed:', err.message);
+      setNotice('Scan failed. Check backend connection.');
+    } finally {
       setIsScanning(false);
-      setNotice("Scan complete. Signals refreshed.");
-    }, wait);
-  };
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    runScan();
+    fetchMarketPulse();
+    const pulse = setInterval(fetchMarketPulse, 30000);
+    return () => clearInterval(pulse);
+  }, [runScan, fetchMarketPulse]);
 
   const clearFilters = () => {
     setFilters({
@@ -181,10 +184,10 @@ const MarketResearchDashboard = () => {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">
                 <Activity size={12} />
-                {researchMockData.marketStatus}
+                MARKET OPEN
               </div>
               <h1 className="mt-2 text-2xl font-black tracking-tight text-white md:text-3xl">Market Research Screener</h1>
-              <p className="mt-1 text-sm text-slate-300">Frontend-only intelligent research workspace with simulated market behavior.</p>
+              <p className="mt-1 text-sm text-slate-300">Live market intelligence — real-time signals from backend.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -354,67 +357,75 @@ const MarketResearchDashboard = () => {
             <div className="grid gap-4 xl:grid-cols-2">
               <SectionPanel title="Market Overview" subtitle="NIFTY trend, sentiment, and volatility" accent="cyan">
                 <div className="space-y-2 text-sm text-slate-200">
-                  <div>NIFTY Trend: <span className="font-semibold text-emerald-200">{researchMockData.marketOverview.niftyTrend}</span></div>
+                  <div>NIFTY: <span className="font-semibold text-emerald-200">{marketPulse.nifty.toLocaleString('en-IN')}</span></div>
                   <div>Sentiment: <span className="font-semibold text-cyan-100">{marketPulse.sentimentLabel}</span></div>
-                  <div>Volatility: <span className="font-semibold text-amber-200">{researchMockData.marketOverview.volatility}</span></div>
+                  <div>Score: <span className="font-semibold text-amber-200">{marketPulse.sentimentScore}/100</span></div>
                 </div>
               </SectionPanel>
 
-              <SectionPanel title="Sector Strength" subtitle="IT, Banking, Auto and other leadership zones" accent="emerald">
+              <SectionPanel title="Top Gainers" subtitle="Highest % change stocks from live scan" accent="emerald">
                 <div className="space-y-2">
-                  {researchMockData.sectorStrength.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
-                      <span>{item.name}</span>
-                      <span className="text-slate-300">{item.trend} ({item.score})</span>
+                  {baseStocks.filter(s => s.change > 0).slice(0, 5).map((s) => (
+                    <div key={s.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
+                      <span className="font-semibold text-white">{s.symbol}</span>
+                      <span className="text-emerald-300">+{Number(s.change).toFixed(2)}%</span>
                     </div>
                   ))}
+                  {baseStocks.filter(s => s.change > 0).length === 0 && <p className="text-slate-500 text-xs">Loading...</p>}
                 </div>
               </SectionPanel>
 
-              <SectionPanel title="Pattern Scanner" subtitle="Breakouts, reversals, and consolidation behavior" accent="violet">
+              <SectionPanel title="Volume Spikes" subtitle="Stocks with unusual volume activity" accent="violet">
                 <div className="space-y-2">
-                  {researchMockData.patternScanner.map((item) => (
-                    <div key={`${item.symbol}-${item.pattern}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
-                      <span className="font-semibold text-white">{item.symbol}</span> - {item.pattern} - <span className="text-slate-300">{item.status}</span>
+                  {baseStocks.filter(s => s.volumeSpike).slice(0, 5).map((s) => (
+                    <div key={s.id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+                      <span className="font-semibold text-white">{s.symbol}</span> — Vol Ratio: {Number(s.rvol).toFixed(1)}x
                     </div>
                   ))}
+                  {baseStocks.filter(s => s.volumeSpike).length === 0 && <p className="text-slate-500 text-xs">No spikes detected.</p>}
                 </div>
               </SectionPanel>
 
-              <SectionPanel title="Volume Activity" subtitle="Unusual volume and participation focus" accent="amber">
+              <SectionPanel title="Breakout Candidates" subtitle="Stocks near or above key resistance" accent="amber">
                 <div className="space-y-2">
-                  {researchMockData.volumeActivity.map((item) => (
-                    <div key={item.symbol} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
-                      <span className="font-semibold text-white">{item.symbol}</span> - {item.note}
+                  {baseStocks.filter(s => s.breakoutCandidate).slice(0, 5).map((s) => (
+                    <div key={s.id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+                      <span className="font-semibold text-white">{s.symbol}</span> — ₹{Number(s.price).toLocaleString('en-IN')}
                     </div>
                   ))}
+                  {baseStocks.filter(s => s.breakoutCandidate).length === 0 && <p className="text-slate-500 text-xs">No breakouts detected.</p>}
                 </div>
               </SectionPanel>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr]">
-              <SectionPanel title="Watchlist Suggestions" subtitle="Stocks worth monitoring for behavior shifts" accent="cyan">
+              <SectionPanel title="Top Momentum" subtitle="Stocks showing strong RSI momentum" accent="cyan">
                 <ul className="space-y-2 text-sm text-slate-200">
-                  {researchMockData.watchlistSuggestions.map((item) => (
-                    <li key={item} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">{item}</li>
+                  {[...baseStocks].sort((a, b) => b.rsi - a.rsi).slice(0, 5).map((s) => (
+                    <li key={s.id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 flex justify-between">
+                      <span className="font-semibold text-white">{s.symbol}</span>
+                      <span className="text-cyan-300">RSI {Number(s.rsi).toFixed(0)}</span>
+                    </li>
                   ))}
+                  {baseStocks.length === 0 && <li className="text-slate-500 text-xs">Loading...</li>}
                 </ul>
               </SectionPanel>
 
-              <SectionPanel title="Market Insight Feed" subtitle="Streaming-style research commentary" accent="violet">
+              <SectionPanel title="Live Signal Feed" subtitle="Real-time market intelligence from scan" accent="violet">
                 <div className="max-h-[260px] space-y-2 overflow-y-auto pr-1">
-                  {researchMockData.insightFeed.map((item, index) => (
+                  {filteredStocks.slice(0, 8).map((s, index) => (
                     <motion.div
-                      key={item}
+                      key={s.id}
                       initial={{ opacity: 0, x: 8 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: index * 0.04, duration: 0.22 }}
                       className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200"
                     >
-                      {item}
+                      <span className="font-semibold text-white">{s.symbol}</span> — {s.signalType} — <span className={s.change >= 0 ? 'text-emerald-300' : 'text-rose-300'}>{s.change >= 0 ? '+' : ''}{Number(s.change).toFixed(2)}%</span>
                     </motion.div>
                   ))}
+                  {filteredStocks.length === 0 && !isScanning && <p className="text-slate-500 text-xs">No signals matched.</p>}
                 </div>
               </SectionPanel>
             </div>

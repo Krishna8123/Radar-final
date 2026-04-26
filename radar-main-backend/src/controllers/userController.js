@@ -1,9 +1,6 @@
 const User = require('../models/User');
-<<<<<<< HEAD
-=======
 const Portfolio = require('../models/Portfolio');
 const { calculatePortfolioRisk } = require('../services/portfolioRiskService');
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const asyncHandler = require('express-async-handler');
@@ -161,9 +158,6 @@ const updateMode = asyncHandler(async (req, res) => {
     res.json({ message: "Mode updated", preferredMode: user.preferredMode });
 });
 
-<<<<<<< HEAD
-module.exports = { registerUser, loginUser, getUserProfile, getMode, updateMode, googleAuth };
-=======
 // Investor Dashboard APIs Implementation
 
 const getUserPortfolio = asyncHandler(async (req, res) => {
@@ -271,4 +265,3 @@ module.exports = {
     getUserNews,
     getUserEvents
 };
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627

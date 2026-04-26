@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -19,6 +19,7 @@ import {
   EyeOff,
   X,
 } from 'lucide-react';
+import { fetchOHLCData } from '../../api/ohlcApi';
 
 
 
@@ -172,9 +173,20 @@ const AdvancedTradingChart = ({
   const loadChartData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = generateMockData(100);
+      const response = await fetchOHLCData(symbol, {
+        timeframe: timeframe.includes('m') ? timeframe : timeframe === 'D' ? '1d' : timeframe === 'W' ? '1wk' : '1mo',
+        limit: 200
+      });
       
-      if (candleSeriesRef.current) {
+      const data = response.data.map(d => ({
+        time: d.timestamp / 1000,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      })).sort((a, b) => a.time - b.time);
+      
+      if (candleSeriesRef.current && data.length > 0) {
         candleSeriesRef.current.setData(data);
         
         const lastCandle = data[data.length - 1];
@@ -198,32 +210,7 @@ const AdvancedTradingChart = ({
     }
   }, [onChartReady]);
 
-  const generateMockData = (count) => {
-    const data = [];
-    const now = Math.floor(Date.now() / 1000);
-    const interval = TIMEFRAMES.find(tf => tf.id === timeframe)?.seconds || 900;
-    let price = 2800 + Math.random() * 100;
 
-    for (let i = 0; i < count; i++) {
-      const time = now - (count - i) * interval;
-      const open = price;
-      const close = price + (Math.random() - 0.5) * 20;
-      const high = Math.max(open, close) + Math.random() * 10;
-      const low = Math.min(open, close) - Math.random() * 10;
-
-      data.push({
-        time,
-        open: parseFloat(open.toFixed(2)),
-        high: parseFloat(high.toFixed(2)),
-        low: parseFloat(low.toFixed(2)),
-        close: parseFloat(close.toFixed(2)),
-      });
-
-      price = close;
-    }
-
-    return data;
-  };
 
   const calculateSMA = (data, period) => {
     const smaData = [];

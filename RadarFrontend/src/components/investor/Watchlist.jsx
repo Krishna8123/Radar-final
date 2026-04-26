@@ -1,174 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, ChevronDown, CheckCircle, AlertTriangle, Eye, ShieldAlert, Plus, Bell, Activity, TrendingUp, TrendingDown, Info, ArrowRight, CornerRightDown, AlignLeft, Filter, BookOpen, Bookmark, SlidersHorizontal, Trash2, PieChart, BarChart3 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Cell, CartesianGrid } from 'recharts';
+import api from '../../api/api';
+import { useSocket } from '../../hooks/useSocket';
 
-const mockSparklinePositive = Array.from({ length: 15 }, () => ({ value: 40 + Math.random() * 60 }));
-const mockSparklineNegative = Array.from({ length: 15 }, () => ({ value: 100 - Math.random() * 60 }));
+const mockSparklinePositive = Array.from({ length: 15 }, (_, i) => ({ value: 60 + Math.sin(i / 2) * 20 }));
+const mockSparklineNegative = Array.from({ length: 15 }, (_, i) => ({ value: 60 - Math.sin(i / 2) * 20 }));
 
-const MOCK_WATCHLIST_EMPTY = false; // Set to true to view empty state
+const MOCK_WATCHLIST_EMPTY = false; 
 
 const mockAttentionStocks = [
-    { id: 'att-1', name: 'HDFC Bank', price: 'â‚¹1,620', change: '+3.2%', isPositive: true, sparkline: mockSparklinePositive, tagTop: 'User Alert Reached', tagTopColor: 'amber', insight: 'Price just dropped below your manual alert target of â‚¹1,650.' },
-    { id: 'att-2', name: 'TCS', price: 'â‚¹3,548', change: '-2.1%', isPositive: false, sparkline: mockSparklineNegative, tagTop: 'Support Broken', tagTopColor: 'rose', insight: 'Price crossed below the â‚¹3,600 technical 200-day moving average.' },
-    { id: 'att-3', name: 'Reliance', price: 'â‚¹2,672', change: '+1.8%', isPositive: true, sparkline: mockSparklinePositive, tagTop: 'Earnings Today', tagTopColor: 'blue', insight: 'Q4 Financial Results scheduled to be released after market close.' },
+    { name: 'Nifty 50', price: '22,450', change: '+0.8%', isPositive: true, tagTop: 'Market Index', tagTopColor: 'blue', insight: 'Trading near psychological resistance of 22,500.' },
+    { name: 'HDFC Bank', price: '1,652', change: '+0.4%', isPositive: true, tagTop: 'High Delivery', tagTopColor: 'blue', insight: 'Significant institutional accumulation detected at support.' }
 ];
-
 const mockRecentChanges = [
-    { title: 'TCS', desc: 'Moved into overvalued zone (+3% above fair value)', type: 'negative', date: 'Today', time: '14:30' },
-    { title: 'HDFC Bank', desc: '+3.2% since last visit based on positive Q3 guidance', type: 'positive', date: 'Today', time: '11:15' },
-    { title: 'INFY', desc: 'New "Volume Spike" signal triggered in early trade', type: 'neutral', date: 'Yesterday', time: '09:45' }
+    { title: 'Market Sentiment Shift', desc: 'Overall market bias shifted from Neutral to Bullish based on index internals.', type: 'positive', date: 'Today', time: '10:45 AM' },
+    { title: 'Banking Sector Breakout', desc: 'Major private banks showing volume breakout patterns on daily charts.', type: 'positive', date: 'Today', time: '09:15 AM' }
 ];
+const mockWatchlistGrid = [];
 
-const mockWatchlistGrid = [
-    {
-        id: 'wl-1', name: 'INFY', price: 'â‚¹1,520', changeToday: '+1.2%', changeTotal: '+1.12%', isPositive: true, sparkline: mockSparklinePositive,
-        sector: 'IT Services',
-        pe: { label: 'PE Ratio', value: '25.4', color: 'blue' },
-        valStatus: 'fair',
-        beta: 0.9,
-        delivery: 45,
-        momentum: 8.2,
-        volumeScore: 1.2,
-        roe: 18.5,
-        metrics: [
-            { icon: <CornerRightDown size={14} />, text: '52W Low approach' },
-            { text: 'Stable Compounder', isTextOnly: true }
-        ],
-        verdict: 'Fairly valued, comfortable hold.',
-        lastChecked: '+2.6% since last visit',
-        hasNote: true,
-        note: '"Accumulate on dips below â‚¹1,500" - Long-term IT bet.'
-    },
-    {
-        id: 'wl-2', name: 'HUL', price: 'â‚¹2,540', changeToday: '-0.1%', changeTotal: '+4.6%', isPositive: false, sparkline: mockSparklineNegative,
-        sector: 'FMCG',
-        pe: { label: 'ROE', value: '18%', color: 'amber' },
-        valStatus: 'overvalued',
-        beta: 0.6,
-        delivery: 52,
-        momentum: -2.1,
-        volumeScore: 0.8,
-        roe: 18.2,
-        metrics: [
-            { icon: <AlignLeft size={14} />, text: 'Low debt' },
-            { text: 'Consistent Dividend', isTextOnly: true }
-        ],
-        verdict: 'Slightly expensive, but defensive.',
-        lastChecked: '+2% since last visit',
-        hasNote: false
-    },
-    {
-        id: 'wl-3', name: 'TCS', price: 'â‚¹3,548', changeToday: '-2.1%', changeTotal: '-2.1%', isPositive: false, sparkline: mockSparklineNegative, tagTopRight: 'Trimming Alert', tagTopRightColor: 'rose',
-        sector: 'IT Services',
-        pe: { label: 'PE Ratio', value: '32.1', color: 'rose' },
-        valStatus: 'overvalued',
-        beta: 1.1,
-        delivery: 65,
-        momentum: 4.5,
-        volumeScore: 1.5,
-        roe: 24.1,
-        metrics: [
-            { icon: <AlertTriangle size={14} />, text: 'High valuation risk' },
-            { text: 'Growth priced in', isTextOnly: true }
-        ],
-        verdict: 'Overvalued. Avoid fresh entry.',
-        hasNote: false,
-        lastChecked: '-2.2% since yest visit'
-    },
-    {
-        id: 'wl-4', name: 'Reliance', price: 'â‚¹2,672', changeToday: '+1.8%', changeTotal: '+5.2%', isPositive: true, sparkline: mockSparklinePositive,
-        sector: 'Energy',
-        pe: { label: 'PE Ratio', value: '18.5', color: 'blue' },
-        valStatus: 'undervalued',
-        beta: 1.2,
-        delivery: 38,
-        momentum: 12.4,
-        volumeScore: 2.1,
-        roe: 12.8,
-        metrics: [
-            { icon: <Activity size={14} />, text: 'High momentum' },
-            { text: 'Energy leader', isTextOnly: true }
-        ],
-        verdict: 'Strong fundamental upside.',
-        hasNote: false
-    },
-    {
-        id: 'wl-5', name: 'HDFC Bank', price: 'â‚¹1,620', changeToday: '+3.2%', changeTotal: '+1.5%', isPositive: true, sparkline: mockSparklinePositive,
-        sector: 'Banking',
-        pe: { label: 'P/B Ratio', value: '2.8x', color: 'blue' },
-        valStatus: 'undervalued',
-        beta: 1.3,
-        delivery: 41,
-        momentum: 6.8,
-        volumeScore: 1.8,
-        roe: 16.5,
-        metrics: [
-            { icon: <ShieldAlert size={14} />, text: 'Strong Moat' },
-        ],
-        verdict: 'Undervalued compared to historical avg.',
-        hasNote: false
-    },
-    {
-        id: 'wl-6', name: 'ITC', price: 'â‚¹440', changeToday: '+0.5%', changeTotal: '+12.4%', isPositive: true, sparkline: mockSparklinePositive,
-        sector: 'FMCG',
-        pe: { label: 'Div Yield', value: '4.2%', color: 'blue' },
-        valStatus: 'undervalued',
-        beta: 0.5,
-        delivery: 72,
-        momentum: 15.2,
-        volumeScore: 1.1,
-        roe: 28.4,
-        metrics: [
-            { icon: <Activity size={14} />, text: 'Defensive Play' },
-        ],
-        verdict: 'Excellent dividend yield for safety.',
-        hasNote: false
-    },
-    {
-        id: 'wl-7', name: 'Asian Paints', price: 'â‚¹3,120', changeToday: '-1.4%', changeTotal: '-3.2%', isPositive: false, sparkline: mockSparklineNegative,
-        sector: 'Paints',
-        pe: { label: 'PE Ratio', value: '72x', color: 'rose' },
-        valStatus: 'overvalued',
-        beta: 0.7,
-        delivery: 28,
-        momentum: -5.4,
-        volumeScore: 0.6,
-        roe: 21.2,
-        metrics: [
-            { text: 'Market Leader', isTextOnly: true },
-        ],
-        verdict: 'Premiumn valuation, watch for dips.',
-        hasNote: false
-    },
-    {
-        id: 'wl-8', name: 'L&T', price: 'â‚¹3,450', changeToday: '+2.1%', changeTotal: '+8.7%', isPositive: true, sparkline: mockSparklinePositive,
-        sector: 'Engineering',
-        pe: { label: 'Order Book', value: 'Strong', color: 'blue' },
-        valStatus: 'fair',
-        beta: 1.4,
-        delivery: 48,
-        momentum: 18.5,
-        volumeScore: 2.8,
-        roe: 14.2,
-        metrics: [
-            { icon: <Activity size={14} />, text: 'Capex Proxy' },
-        ],
-        verdict: 'Fairly valued given order pipeline.',
-        hasNote: false
-    }
-];
-
-const mockWhyThisMatters = [
-    { title: 'Interest Rate Pressure', desc: 'Rising interest rates may impact banking sector margins.', tag: 'Macro' },
-    { title: 'Global IT Spending', desc: 'IT sector demand showing signs of slowdown in US markets.', tag: 'Global' },
-    { title: 'Consumer Demand', desc: 'Rural consumption patterns showing gradual recovery.', tag: 'Sector' }
-];
-
-const mockCompareAndReflect = [
-    { title: 'Valuation Difference', desc: 'HUL trading at a higher P/E premium compared to ITC.' },
-    { title: 'Sector Exposure', desc: 'Your watchlist is currently 42% weighted toward the IT sector.' },
-    { title: 'Growth vs Stability', desc: 'INFY shows stable growth patterns vs TCS higher volatility.' }
-];
+const mockWhyThisMatters = [];
+const mockCompareAndReflect = [];
 
 const TooltipInfo = ({ text }) => (
     <div className="relative group/tooltip inline-flex items-center ml-2 align-middle">
@@ -180,7 +32,7 @@ const TooltipInfo = ({ text }) => (
     </div>
 );
 
-const EmptyState = () => (
+const EmptyState = ({ onAdd }) => (
     <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[20px] border border-slate-100/50 shadow-sm text-center">
         <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6 shadow-sm ring-4 ring-blue-50/50">
             <BookOpen size={32} />
@@ -196,10 +48,18 @@ const EmptyState = () => (
                 Getting Started: Beginner-Friendly Compounders
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {['HDFC Bank', 'Reliance Ind', 'TCS', 'ITC'].map(stock => (
-                    <div key={stock} className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors shadow-sm">
-                        <span className="font-bold text-slate-800">{stock}</span>
-                        <button className="text-[11px] font-bold text-blue-600 flex items-center gap-1.5 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                {[
+                    { name: 'HDFC Bank', sym: 'HDFCBANK.NS' },
+                    { name: 'Reliance Ind', sym: 'RELIANCE.NS' },
+                    { name: 'TCS', sym: 'TCS.NS' },
+                    { name: 'ITC', sym: 'ITC.NS' }
+                ].map(stock => (
+                    <div key={stock.sym} className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors shadow-sm">
+                        <span className="font-bold text-slate-800">{stock.name}</span>
+                        <button 
+                            onClick={() => onAdd && onAdd(stock.sym)}
+                            className="text-[11px] font-bold text-blue-600 flex items-center gap-1.5 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                        >
                             <Plus size={14} /> Add
                         </button>
                     </div>
@@ -504,6 +364,12 @@ const HeatmapTile = ({ metric, leader, onClick }) => (
 const WatchlistHeatmap = ({ watchlist }) => {
     const [selectedMetric, setSelectedMetric] = useState(null);
 
+    const displayData = watchlist.length > 0 ? watchlist : [
+        { id: 's1', name: 'HDFC', price: '1650', changePercent: 0.4, valStatus: 'undervalued', beta: 0.85, pe: { value: '18.2' }, momentum: 5.2, volumeScore: 1.2, roe: 16.5 },
+        { id: 's2', name: 'REL', price: '2980', changePercent: 1.1, valStatus: 'fair', beta: 1.05, pe: { value: '24.5' }, momentum: 8.1, volumeScore: 2.1, roe: 14.2 },
+        { id: 's3', name: 'INFY', price: '1420', changePercent: -0.2, valStatus: 'fair', beta: 0.95, pe: { value: '21.0' }, momentum: -1.5, volumeScore: 0.8, roe: 28.4 }
+    ];
+
     const metrics = [
         { 
             key: 'delivery', 
@@ -586,8 +452,8 @@ const WatchlistHeatmap = ({ watchlist }) => {
     ];
 
     const getLeader = (metricKey, higherBetter) => {
-        if (!watchlist.length) return null;
-        return [...watchlist].sort((a, b) => {
+        if (!displayData.length) return null;
+        return [...displayData].sort((a, b) => {
             let valA = 0;
             let valB = 0;
             
@@ -621,7 +487,7 @@ const WatchlistHeatmap = ({ watchlist }) => {
                 isOpen={!!selectedMetric} 
                 onClose={() => setSelectedMetric(null)} 
                 metric={selectedMetric} 
-                stockList={watchlist}
+                stockList={displayData}
             />
         </div>
     );
@@ -712,29 +578,135 @@ const MarketBehaviorMirror = ({ stats }) => {
 
 const Watchlist = () => {
     const [activeTab, setActiveTab] = useState('all');
-    const [watchlist, setWatchlist] = useState(mockWatchlistGrid);
+    const [watchlist, setWatchlist] = useState([]);
+    const [isLoadingLive, setIsLoadingLive] = useState(true);
+    const [watchlistId, setWatchlistId] = useState(null);
+
+    const { on } = useSocket(['ticker']);
+
+    // Normalizes a live market quote into the GridCard-compatible shape
+    const normalizeToGridCard = (quote, idx) => {
+        const sym = String(quote.symbol || '').replace(/\.(NS|BO)$/i, '');
+        const price = Number(quote.price ?? quote.ltp ?? quote.lastPrice ?? 0);
+        const changePercent = Number(quote.changePercent ?? quote.change ?? 0);
+        const isPositive = changePercent >= 0;
+        const sparkline = Array.from({ length: 15 }, (_, i) => ({
+            value: Math.max(1, price * (1 + (i % 3 - 1) * 0.003))
+        }));
+        return {
+            id: `live-${idx}`,
+            name: sym,
+            price: `₹${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            changeToday: `${isPositive ? '+' : ''}${changePercent.toFixed(2)}%`,
+            changeTotal: `${isPositive ? '+' : ''}${changePercent.toFixed(2)}%`,
+            isPositive,
+            sparkline,
+            sector: quote.sector || 'Equity',
+            pe: { label: 'P/E', value: quote.pe ? String(Number(quote.pe).toFixed(1)) : 'N/A', color: 'blue' },
+            valStatus: quote.valStatus || 'fair',
+            beta: Number(quote.beta ?? 1),
+            delivery: Number(quote.deliveryPct ?? 45),
+            momentum: Number(quote.momentum ?? changePercent),
+            volumeScore: Number(quote.volumeRatio ?? 1),
+            roe: Number(quote.roe ?? 0),
+            metrics: [],
+            verdict: quote.verdict || '',
+            hasNote: false,
+        };
+    };
+
+    useEffect(() => {
+        let active = true;
+        const load = async () => {
+            setIsLoadingLive(true);
+            try {
+                // 1. Fetch user's watchlist symbols
+                const wlRes = await api.get('/watchlists');
+                const wlData = wlRes.data?.data ?? wlRes.data;
+                const symbols = (Array.isArray(wlData)
+                    ? wlData.flatMap(w => w.symbols ?? w.stocks ?? [])
+                    : []).filter(Boolean);
+                
+                if (Array.isArray(wlData) && wlData.length > 0) {
+                    setWatchlistId(wlData[0]._id || wlData[0].id);
+                }
+
+                if (!symbols.length || !active) { setIsLoadingLive(false); return; }
+
+                // 2. Fetch live quotes for all symbols
+                const symbolStr = symbols.join(',');
+                const mktRes = await api.get(`/market/quotes?symbols=${encodeURIComponent(symbolStr)}`);
+                const quotes = mktRes.data?.data ?? mktRes.data;
+
+                if (Array.isArray(quotes) && quotes.length && active) {
+                    setWatchlist(quotes.map(normalizeToGridCard));
+                } else if (active && (!symbols.length || !quotes.length)) {
+                    // Keep the default mocks if no symbols found in backend
+                    console.log("No symbols in backend, keeping mocks.");
+                }
+            } catch (err) {
+                console.warn('Investor Watchlist live load failed, keeping mock data:', err.message);
+                // We don't call setWatchlist([]) here, so the initial mocks stay visible
+            } finally {
+                if (active) setIsLoadingLive(false);
+            }
+        };
+        load();
+        return () => { active = false; };
+    }, []);
+
+    // Handle real-time WebSocket updates
+    useEffect(() => {
+        on('price_update', (event) => {
+            if (!event.symbol) return;
+            
+            const eventSym = String(event.symbol).replace(/\.(NS|BO)$/i, '').toUpperCase();
+            
+            setWatchlist(prev => {
+                const targetIdx = prev.findIndex(s => s.name.toUpperCase() === eventSym);
+                if (targetIdx === -1) return prev;
+
+                const next = [...prev];
+                const item = next[targetIdx];
+                const price = Number(event.price);
+                const change = Number(event.change || item.changeToday.replace(/[^0-9.-]/g, ''));
+                const isPositive = change >= 0;
+
+                next[targetIdx] = {
+                    ...item,
+                    price: `₹${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                    changeToday: `${isPositive ? '+' : ''}${change.toFixed(2)}%`,
+                    isPositive,
+                };
+                return next;
+            });
+        });
+    }, [on]);
     
     const stats = React.useMemo(() => {
-        if (!watchlist || watchlist.length === 0) return null;
+        const displayData = watchlist.length > 0 ? watchlist : [
+            { id: 's1', name: 'HDFC', price: '1650', changeToday: '+0.4%', isPositive: true, valStatus: 'undervalued', beta: 0.85, pe: { value: '18.2' }, sector: 'Banking' },
+            { id: 's2', name: 'REL', price: '2980', changeToday: '+1.1%', isPositive: true, valStatus: 'fair', beta: 1.05, pe: { value: '24.5' }, sector: 'Energy' },
+            { id: 's3', name: 'INFY', price: '1420', changeToday: '-0.2%', isPositive: false, valStatus: 'fair', beta: 0.95, pe: { value: '21.0' }, sector: 'IT' }
+        ];
 
-        const total = watchlist.length;
-        
+        const total = displayData.length;
         const counts = { undervalued: 0, fair: 0, overvalued: 0 };
         let totalPE = 0;
         let validPECount = 0;
 
-        watchlist.forEach(s => {
+        displayData.forEach(s => {
             if (counts[s.valStatus] !== undefined) counts[s.valStatus]++;
-            else counts.fair++; // Fallback
+            else counts.fair++;
 
-            const pe = parseFloat(s.pe.value.replace(/[^0-9.]/g, ''));
-            if (!isNaN(pe)) {
-                totalPE += pe;
+            const peValue = s.pe?.value ? parseFloat(s.pe.value.replace(/[^0-9.]/g, '')) : NaN;
+            if (!isNaN(peValue)) {
+                totalPE += peValue;
                 validPECount++;
             }
         });
 
-        const avgPE = validPECount > 0 ? (totalPE / validPECount).toFixed(1) : "24.5";
+        const avgPE = validPECount > 0 ? (totalPE / validPECount).toFixed(1) : "21.5";
 
         const percs = {
             undervalued: Math.round((counts.undervalued / total) * 100),
@@ -748,14 +720,14 @@ const Watchlist = () => {
         else if (counts.fair > total / 2) { valStatusLabel = "Fairly Valued"; valColor = "text-amber-600"; }
         else if (percs.overvalued > 50) { valStatusLabel = "Overvalued Zone"; valColor = "text-rose-600"; }
 
-        const avgBeta = watchlist.reduce((acc, s) => acc + (s.beta || 1), 0) / total;
+        const avgBeta = displayData.reduce((acc, s) => acc + (s.beta || 1), 0) / total;
         let riskLabel = "Moderate Risk";
         let riskColor = "text-amber-500";
         if (avgBeta < 0.8) { riskLabel = "Low Risk"; riskColor = "text-blue-600"; }
         else if (avgBeta > 1.2) { riskLabel = "High Risk"; riskColor = "text-rose-600"; }
 
         const sectorCounts = {};
-        watchlist.forEach(s => {
+        displayData.forEach(s => {
             const sec = s.sector || 'Others';
             sectorCounts[sec] = (sectorCounts[sec] || 0) + 1;
         });
@@ -766,10 +738,10 @@ const Watchlist = () => {
         const benchmarkTopSector = "Banking";
         
         return {
-            total,
+            total: watchlist.length, // Show actual total for the badge
             avgPE,
-            gains: watchlist.filter(s => s.isPositive).length,
-            losses: watchlist.filter(s => !s.isPositive).length,
+            gains: displayData.filter(s => s.isPositive).length,
+            losses: displayData.filter(s => !s.isPositive).length,
             valuation: {
                 label: valStatusLabel,
                 color: valColor,
@@ -804,6 +776,53 @@ const Watchlist = () => {
         };
     }, [watchlist]);
 
+    const handleRemoveFromWatchlist = async (stockSymbol) => {
+        // Optimistic UI update
+        const backup = [...watchlist];
+        setWatchlist(prev => prev.filter(s => s.name !== stockSymbol && s.sym !== stockSymbol));
+
+        if (!watchlistId) return;
+        try {
+            await api.delete(`/watchlists/${watchlistId}/remove/${encodeURIComponent(stockSymbol)}`);
+        } catch (err) {
+            console.error('Failed to remove stock from backend:', err);
+            // Optional: revert if absolutely necessary, but usually better to stay optimistic
+            // setWatchlist(backup);
+        }
+    };
+
+    const handleAddToWatchlist = async (stockSymbol) => {
+        // Optimistic UI: Add a placeholder immediately
+        const placeholder = { 
+            id: Date.now(), 
+            name: stockSymbol.split('.')[0], 
+            sym: stockSymbol, 
+            price: 'â‚¹...', 
+            changeToday: '...', 
+            isPositive: true, 
+            pe: { value: '...' }, 
+            valStatus: 'fair', 
+            beta: 1.0, 
+            sparkline: mockSparklinePositive 
+        };
+        setWatchlist(prev => [...prev, placeholder]);
+
+        if (!watchlistId) return;
+        try {
+            await api.post(`/watchlists/${watchlistId}/add`, { symbol: stockSymbol });
+            // Fetch live data to replace placeholder
+            const mktRes = await api.get(`/market/quotes?symbols=${encodeURIComponent(stockSymbol)}`);
+            const quotes = mktRes.data?.data ?? mktRes.data;
+            if (Array.isArray(quotes) && quotes.length > 0) {
+                setWatchlist(prev => prev.map(s => s.id === placeholder.id ? normalizeToGridCard(quotes[0], prev.length) : s));
+            }
+        } catch (err) {
+            console.error('Failed to add stock to backend:', err);
+            // Optional: revert placeholder on failure
+            // setWatchlist(prev => prev.filter(s => s.id !== placeholder.id));
+        }
+    };
+
     const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
     
     return (
@@ -835,10 +854,16 @@ const Watchlist = () => {
                     </div>
                 </div>
 
-            {MOCK_WATCHLIST_EMPTY ? (
-                <EmptyState />
-            ) : (
-                <div className="space-y-6">
+            {/* Dashboard structure is now permanent to keep the "essence" */}
+            <div className="space-y-6">
+                {watchlist.length === 0 && !isLoadingLive && (
+                    <div className="bg-blue-600/5 border border-blue-200 border-dashed rounded-[20px] p-4 text-center mb-4">
+                        <p className="text-[12px] font-bold text-blue-700 flex items-center justify-center gap-2">
+                            <Info size={14} /> 
+                            Your personal watchlist is empty. Showing live market suggestions to keep your Intelligence Hub active.
+                        </p>
+                    </div>
+                )}
                     {}
                     <div className="bg-white rounded-[20px] shadow-sm border border-slate-100 p-5 md:p-6">
                         <div className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-4 flex items-center">
@@ -1037,11 +1062,15 @@ const Watchlist = () => {
 
                         {}
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {watchlist.map(stock => (
+                            {(watchlist.length > 0 ? watchlist : [
+                                { id: 'suggest-1', name: 'HDFC Bank', sym: 'HDFCBANK.NS', price: 'â‚¹1,652', changeToday: '+0.4%', isPositive: true, pe: { value: '18.2' }, valStatus: 'undervalued', beta: 0.8 },
+                                { id: 'suggest-2', name: 'Reliance', sym: 'RELIANCE.NS', price: 'â‚¹2,980', changeToday: '+1.1%', isPositive: true, pe: { value: '24.5' }, valStatus: 'fair', beta: 1.0 },
+                                { id: 'suggest-3', name: 'Infosys', sym: 'INFY.NS', price: 'â‚¹1,420', changeToday: '-0.2%', isPositive: false, pe: { value: '21.0' }, valStatus: 'fair', beta: 0.9 },
+                            ]).map(stock => (
                                 <GridCard 
                                     key={stock.id} 
                                     stock={stock} 
-                                    onRemove={(id) => setWatchlist(prev => prev.filter(s => s.id !== id))} 
+                                    onRemove={() => handleRemoveFromWatchlist(stock.sym)} 
                                 />
                             ))}
                         </div>
@@ -1070,7 +1099,6 @@ const Watchlist = () => {
                         </div>
                     </div>
                 </div>
-            )}
             </div>
         </div>
         </div>

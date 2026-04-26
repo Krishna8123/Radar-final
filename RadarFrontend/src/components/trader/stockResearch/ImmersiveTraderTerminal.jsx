@@ -43,6 +43,8 @@ import {
 import { createChart, ColorType, AreaSeries, CandlestickSeries, LineSeries, CrosshairMode } from 'lightweight-charts';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fetchOHLCData } from '../../../api/ohlcApi';
+import { fetchMarketData, fetchMarketNews } from '../../../api/marketApi';
 
 // ── Configuration ──
 const TF_CONFIG = {
@@ -55,30 +57,32 @@ const TF_CONFIG = {
   '1W': { stepSec: 604800, points: 600, label: '1 week' },
 };
 
-const buildOhlcv = (symbol, basePrice, timeframe) => {
-  const config = TF_CONFIG[timeframe] || TF_CONFIG['10m'];
-  const stepSec = Number(config.stepSec);
-  const points = Number(config.points);
-  const now = Math.floor(Date.now() / 1000);
-  const alignedNowSec = Math.floor(now / stepSec) * stepSec;
-  const startSec = alignedNowSec - (points - 1) * stepSec;
-  
-  const data = [];
-  let currentPrice = Number(basePrice);
-  for (let i = 0; i < points; i++) {
-    const time = Number(startSec + (i * stepSec));
-    const change = currentPrice * (Math.random() * 0.02 - 0.01);
-    currentPrice += change;
-    data.push({
-      time,
-      open: currentPrice - change,
-      high: currentPrice + Math.abs(change),
-      low: currentPrice - Math.abs(change),
-      close: currentPrice,
-      value: currentPrice
+const buildOhlcv = async (symbol, timeframe) => {
+  try {
+    const config = TF_CONFIG[timeframe] || TF_CONFIG['10m'];
+    const limit = config.points || 600;
+    
+    const response = await fetchOHLCData(symbol, {
+      timeframe: timeframe.includes('m') ? timeframe : timeframe === '1D' ? '1d' : timeframe === '1W' ? '1wk' : '1mo',
+      limit
     });
+
+    if (!response.data || response.data.length === 0) {
+      return [];
+    }
+
+    return response.data.map(d => ({
+      time: d.timestamp / 1000,
+      open: d.open,
+      high: d.high,
+      low: d.low,
+      close: d.close,
+      value: d.close
+    })).sort((a, b) => a.time - b.time);
+  } catch (error) {
+    console.error('Error building OHLCV:', error);
+    return [];
   }
-  return data;
 };
 
 const buildHeikinAshi = (data) => {
@@ -158,52 +162,50 @@ const ChartPane = ({ symbol, timeframe, chartType, indicators, basePrice, active
     }
     mainSeriesRef.current = series;
 
-    const rawData = buildOhlcv(symbol, basePrice, timeframe);
-    const lineData = rawData.map(({ time, close }) => ({ time, value: close }));
-    const chartData =
-      chartType === 'heikin'
-        ? buildHeikinAshi(rawData)
-        : chartType === 'area' || chartType === 'line'
-          ? lineData
-          : rawData;
-    series.setData(chartData);
-    chart.timeScale().applyOptions({
-      rightOffset: 0,
-      fixLeftEdge: true,
-      fixRightEdge: true,
-    });
-    chart.timeScale().setVisibleLogicalRange({
-      from: 0,
-      to: Math.max(chartData.length - 1, 1),
-    });
-    chart.timeScale().fitContent();
+    const loadData = async () => {
+      const rawData = await buildOhlcv(symbol, timeframe);
+      if (rawData.length === 0) return;
 
-    // ── Indicator Support (Overlays) ──
-    if (indicators.ema) {
-      const emaSeries = chart.addSeries(LineSeries, { color: '#fbbf24', lineWidth: 1.5, title: 'EMA 20' });
-      const emaData = rawData.map((d, i) => {
-        const period = 20;
-        if (i < period) return { time: d.time, value: d.close };
-        const prevValue = rawData[i-1].close;
-        const val = (d.close - prevValue) * (2 / (period + 1)) + prevValue;
-        return { time: d.time, value: val };
+      const lineData = rawData.map(({ time, close }) => ({ time, value: close }));
+      const chartData =
+        chartType === 'heikin'
+          ? buildHeikinAshi(rawData)
+          : chartType === 'area' || chartType === 'line'
+            ? lineData
+            : rawData;
+      series.setData(chartData);
+      chart.timeScale().fitContent();
+
+      if (indicators.ema) {
+        const emaSeries = chart.addSeries(LineSeries, { color: '#fbbf24', lineWidth: 1.5, title: 'EMA 20' });
+        const emaData = rawData.map((d, i) => {
+          const period = 20;
+          if (i < period) return { time: d.time, value: d.close };
+          const prevValue = rawData[i-1].close;
+          const val = (d.close - prevValue) * (2 / (period + 1)) + prevValue;
+          return { time: d.time, value: val };
+        });
+        emaSeries.setData(emaData);
+      }
+
+      if (indicators.vwap) {
+        const vwapSeries = chart.addSeries(LineSeries, { color: '#8b5cf6', lineWidth: 1.5, title: 'VWAP', lineStyle: 2 });
+        // VWAP should ideally come from backend, using EMA-style fallback for now instead of random
+        vwapSeries.setData(lineData);
+      }
+
+      indicators.compare?.forEach(async (s) => {
+        const COMP_COLORS = ['#fbbf24', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+        const color = COMP_COLORS[indicators.compare.indexOf(s) % COMP_COLORS.length];
+        const comp = chart.addSeries(LineSeries, { color, lineWidth: 2, title: s });
+        const compData = await buildOhlcv(s, timeframe);
+        if (compData.length > 0) {
+          comp.setData(compData.map(d => ({ time: d.time, value: d.value })));
+        }
       });
-      emaSeries.setData(emaData);
-    }
+    };
 
-    if (indicators.vwap) {
-      const vwapSeries = chart.addSeries(LineSeries, { color: '#8b5cf6', lineWidth: 1.5, title: 'VWAP', lineStyle: 2 });
-      const vwapData = rawData.map(d => ({ time: d.time, value: d.close * (0.998 + Math.random() * 0.004) }));
-      vwapSeries.setData(vwapData);
-    }
-
-    // ── Comparison Support ──
-    const compareSeries = [];
-    indicators.compare?.forEach(s => {
-      const comp = chart.addSeries(LineSeries, { color: '#' + Math.floor(Math.random()*16777215).toString(16), lineWidth: 2, title: s });
-      comp.setData(buildOhlcv(s, basePrice * (0.8 + Math.random()*0.4), timeframe));
-      compareSeries.push(comp);
-    });
+    loadData();
 
     chartRef.current = chart;
 
@@ -496,6 +498,28 @@ const ImmersiveTraderTerminal = ({ symbol: initialSymbol = "RELIANCE", basePrice
   const [magnetEnabled, setMagnetEnabled] = useState(false);
   const [drawingsLocked, setDrawingsLocked] = useState(false);
   const [drawingsHidden, setDrawingsHidden] = useState(false);
+  const [watchlist, setWatchlist] = useState([]);
+  const [news, setNews] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchSidebarData = async () => {
+      try {
+        const [mktData, newsData] = await Promise.all([
+          fetchMarketData({ limit: 10 }),
+          fetchMarketNews({ limit: 10 })
+        ]);
+        if (active) {
+          setWatchlist(mktData || []);
+          setNews(newsData || []);
+        }
+      } catch (err) {
+        console.error('Error fetching sidebar data:', err);
+      }
+    };
+    fetchSidebarData();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (activeTool === 'eraser') {
@@ -721,10 +745,10 @@ const ImmersiveTraderTerminal = ({ symbol: initialSymbol = "RELIANCE", basePrice
                   <span className="text-[9px] font-bold text-slate-500 tracking-wider">NSE • {timeframe}</span>
                 </div>
                 <div className="flex items-center gap-5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/5">
-                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">O</span><span className="text-[10px] font-mono font-bold text-emerald-400">{(Number(basePrice) * 0.999 || 0).toFixed(2)}</span></div>
-                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">H</span><span className="text-[10px] font-mono font-bold text-rose-400">{(Number(basePrice) * 1.002 || 0).toFixed(2)}</span></div>
-                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">L</span><span className="text-[10px] font-mono font-bold text-emerald-400">{(Number(basePrice) * 0.997 || 0).toFixed(2)}</span></div>
-                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">C</span><span className="text-[10px] font-mono font-bold text-white">{(Number(basePrice) || 0).toFixed(2)}</span></div>
+                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">O</span><span className="text-[10px] font-mono font-bold text-emerald-400">{(basePrice || 0).toFixed(2)}</span></div>
+                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">H</span><span className="text-[10px] font-mono font-bold text-rose-400">{(basePrice || 0).toFixed(2)}</span></div>
+                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">L</span><span className="text-[10px] font-mono font-bold text-emerald-400">{(basePrice || 0).toFixed(2)}</span></div>
+                  <div className="flex gap-1.5 items-baseline"><span className="text-[8px] font-black text-slate-500 uppercase">C</span><span className="text-[10px] font-mono font-bold text-white">{(basePrice || 0).toFixed(2)}</span></div>
                 </div>
               </div>
             </div>
@@ -750,24 +774,33 @@ const ImmersiveTraderTerminal = ({ symbol: initialSymbol = "RELIANCE", basePrice
           {sidebarOpen && (
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute right-14 top-0 bottom-0 w-80 bg-black/60 backdrop-blur-[80px] border-l border-white/10 p-6 z-[150] shadow-2xl flex flex-col">
               <div className="flex justify-between items-center mb-8"><h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">{sidebarTab}</h3><button onClick={() => setSidebarOpen(false)}><X size={16}/></button></div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                {sidebarTab === 'watchlist' && ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'SBIN', 'ICICIBANK', 'AXISBANK', 'WIPRO'].map(s => (
-                  <div key={s} onClick={() => { setSymbol(s); setSidebarOpen(false); }} className={`p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-cyan-500/30 transition-all flex justify-between cursor-pointer group ${symbol === s ? 'border-cyan-500/50 bg-cyan-500/5' : ''}`}>
-                    <div><div className="text-[11px] font-black text-white group-hover:text-cyan-400 transition-colors">{s}</div><div className="text-[8px] text-slate-500 uppercase font-bold">NSE • STOCKS</div></div>
-                    <div className="text-right"><div className="text-[10px] font-mono text-slate-300">{(Math.random() * 3000 + 500).toLocaleString(undefined, {minimumFractionDigits: 2})}</div><div className="text-[8px] font-black text-emerald-400">+{ (Math.random() * 2).toFixed(2) }%</div></div>
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                {sidebarTab === 'watchlist' && watchlist.map(s => (
+                  <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setSidebarOpen(false); }} className={`p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-cyan-500/30 transition-all flex justify-between cursor-pointer group ${symbol === s.symbol ? 'border-cyan-500/50 bg-cyan-500/5' : ''}`}>
+                    <div><div className="text-[11px] font-black text-white group-hover:text-cyan-400 transition-colors">{s.symbol}</div><div className="text-[8px] text-slate-500 uppercase font-bold">NSE • STOCKS</div></div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-mono text-slate-300">{Number(s.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                      <div className={`text-[8px] font-black ${Number(s.changePercent || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {Number(s.changePercent || 0) >= 0 ? '+' : ''}{Number(s.changePercent || 0).toFixed(2)}%
+                      </div>
+                    </div>
                   </div>
                 ))}
-                {sidebarTab === 'news' && [1,2,3,4,5].map(i => <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-emerald-500/30 transition-all cursor-pointer"><div className="text-[8px] font-black text-emerald-400 mb-2 uppercase tracking-widest">Market News • {i * 2}m ago</div><div className="text-[11px] font-bold text-white leading-relaxed mb-2">Major market movement detected in {symbol} sector.</div><div className="text-[8px] text-slate-500 font-bold uppercase">Reuters • 4 min read</div></div>)}
+                {sidebarTab === 'news' && news.map((n, i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-emerald-500/30 transition-all cursor-pointer">
+                    <div className="text-[8px] font-black text-emerald-400 mb-2 uppercase tracking-widest">{n.source || 'Market News'} • {n.time || 'Recently'}</div>
+                    <div className="text-[11px] font-bold text-white leading-relaxed mb-2">{n.title || n.headline}</div>
+                    <div className="text-[8px] text-slate-500 font-bold uppercase">{n.source || 'Reuters'}</div>
+                  </div>
+                ))}
                 
-                {sidebarTab === 'calendar' && [
-                  { time: '18:30', event: 'Core PCE Price Index', impact: 'High', color: 'text-rose-500' },
-                  { time: '20:15', event: 'Fed Chair Speaks', impact: 'High', color: 'text-rose-500' }
-                ].map((e, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex gap-4 items-center">
-                    <div className="text-[10px] font-mono font-black text-slate-400 w-12">{e.time}</div>
-                    <div className="flex-1"><div className="text-[10px] font-bold text-white">{e.event}</div><div className={`text-[8px] font-black uppercase tracking-widest ${e.color}`}>{e.impact} Impact</div></div>
+                {sidebarTab === 'calendar' && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                    <Calendar size={32} className="mb-4 text-slate-600" />
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">No Events Scheduled</div>
+                    <p className="text-[8px] font-bold mt-2 text-slate-600">Events for {symbol} will appear here.</p>
                   </div>
-                ))}
+                )}
 
                 {sidebarTab === 'settings' && (
                   <div className="space-y-6">

@@ -3,7 +3,8 @@ import { createChart, AreaSeries, CandlestickSeries, ColorType, LineSeries } fro
 import { ArrowLeft, BarChart2, Activity, TrendingUp, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchOHLCData } from '../../../api/ohlcApi';
-import { stockResearchMock } from '../../../data/stockResearchMock';
+import { fetchTechnicalSummary } from '../../../api/technicalApi';
+import api from '../../../api/api';
 
 const TIMEFRAME_OPTIONS = [
   { id: '10m', label: '10M', backend: '15m' },
@@ -89,6 +90,31 @@ export default function ResearchAdvancedChartPage({ symbol, basePrice = 2870.15 
   const [loading, setLoading] = useState(false);
 
   const selectedTimeframe = TIMEFRAME_OPTIONS.find((item) => item.id === timeframe) || TIMEFRAME_OPTIONS[0];
+
+  // Live sidebar data
+  const [sidebarData, setSidebarData] = useState({ trend: null, sentiment: null, insights: [], news: [], atr: null, volumeStatus: null });
+
+  useEffect(() => {
+    if (!symbol) return;
+    let active = true;
+    Promise.allSettled([
+      fetchTechnicalSummary('stock', symbol),
+      api.get(`/market/news?symbol=${encodeURIComponent(symbol)}&limit=3`),
+    ]).then(([techRes, newsRes]) => {
+      if (!active) return;
+      const tech = techRes.status === 'fulfilled' ? techRes.value : null;
+      const newsData = newsRes.status === 'fulfilled' ? (newsRes.value?.data?.articles ?? newsRes.value?.data?.news ?? newsRes.value?.data ?? []) : [];
+      setSidebarData({
+        trend: tech?.score?.bias ?? tech?.indicators?.trend ?? 'N/A',
+        sentiment: tech?.score?.bias ?? 'N/A',
+        insights: tech?.patterns?.map(p => p.description || p.pattern) ?? [],
+        news: Array.isArray(newsData) ? newsData.slice(0, 3) : [],
+        atr: tech?.indicators?.atr ?? null,
+        volumeStatus: tech?.indicators?.volumeStatus ?? null,
+      });
+    });
+    return () => { active = false; };
+  }, [symbol]);
 
   useEffect(() => {
     let isMounted = true;
@@ -367,19 +393,21 @@ export default function ResearchAdvancedChartPage({ symbol, basePrice = 2870.15 
               <div className="mt-4 space-y-3">
                 <div className="rounded-2xl border border-white/6 bg-white/[0.03] p-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Trend</div>
-                  <div className="mt-2 text-lg font-black text-emerald-300">{stockResearchMock.stock.trend}</div>
+                  <div className="mt-2 text-lg font-black text-emerald-300 capitalize">{sidebarData.trend ?? '—'}</div>
                 </div>
                 <div className="rounded-2xl border border-white/6 bg-white/[0.03] p-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Sentiment</div>
-                  <div className="mt-2 text-lg font-black text-cyan-300">{stockResearchMock.stock.sentiment}</div>
+                  <div className="mt-2 text-lg font-black text-cyan-300 capitalize">{sidebarData.sentiment ?? '—'}</div>
                 </div>
                 <div className="rounded-2xl border border-white/6 bg-white/[0.03] p-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Research Notes</div>
-                  <ul className="mt-3 space-y-2 text-sm text-slate-300">
-                    {stockResearchMock.smartInsights.slice(0, 3).map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
+                  {sidebarData.insights.length > 0 ? (
+                    <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                      {sidebarData.insights.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-slate-500">Loading insights...</p>
+                  )}
                 </div>
               </div>
             </section>
@@ -387,12 +415,16 @@ export default function ResearchAdvancedChartPage({ symbol, basePrice = 2870.15 
             <section className="rounded-3xl border border-white/8 bg-[#0b1120] p-5">
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Research Feed</div>
               <div className="mt-4 space-y-3">
-                {stockResearchMock.news.map((item) => (
-                  <div key={`${item.headline}-${item.time}`} className="rounded-2xl border border-white/6 bg-white/[0.03] p-4">
-                    <div className="text-sm font-bold leading-snug text-slate-100">{item.headline}</div>
-                    <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{item.source} • {item.time}</div>
+                {sidebarData.news.length > 0 ? sidebarData.news.map((item, i) => (
+                  <div key={i} className="rounded-2xl border border-white/6 bg-white/[0.03] p-4">
+                    <div className="text-sm font-bold leading-snug text-slate-100">{item.title || item.headline}</div>
+                    <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                      {item.source?.name ?? item.source ?? 'RADAR'} • {item.publishedAt ? new Date(item.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                    </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-slate-500 mt-2">Fetching news...</p>
+                )}
               </div>
             </section>
           </aside>
@@ -420,8 +452,8 @@ export default function ResearchAdvancedChartPage({ symbol, basePrice = 2870.15 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-slate-400">
             <div>Exchange: NSE</div>
             <div>Timeframe: {selectedTimeframe.label}</div>
-            <div>ATR: {stockResearchMock.stock.atr}</div>
-            <div>Volume Status: {stockResearchMock.technicalSnapshot.volumeStatus}</div>
+            <div>ATR: {sidebarData.atr != null ? Number(sidebarData.atr).toFixed(2) : '—'}</div>
+            <div>Volume Status: {sidebarData.volumeStatus ?? '—'}</div>
           </div>
         </section>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -31,17 +31,17 @@ export const useSocket = (channels = []) => {
         };
     }, [JSON.stringify(channels)]);
 
-    const on = (event, callback) => {
+    const on = useCallback((event, callback) => {
         if (socketRef.current) {
             socketRef.current.on(event, callback);
         }
-    };
+    }, []);
 
-    const emit = (event, data) => {
+    const emit = useCallback((event, data) => {
         if (socketRef.current) {
             socketRef.current.emit(event, data);
         }
-    };
+    }, []);
 
     return { isConnected, on, emit, socket: socketRef.current };
 };

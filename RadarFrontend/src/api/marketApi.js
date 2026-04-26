@@ -37,9 +37,24 @@ export const fetchMarketData = async (params = {}) => {
     try {
         const response = await api.get('/market', { params });
         const payload = response.data?.data ?? response.data;
-        return Array.isArray(payload) ? payload.map(sanitizeMarketRow) : [];
+        const results = Array.isArray(payload) ? payload.map(sanitizeMarketRow) : [];
+        
+        // Cache successful results for offline/instant reload
+        if (results.length > 0 && !params.symbol) {
+            localStorage.setItem(`radar_market_cache_${params.type || 'ALL'}`, JSON.stringify(results));
+        }
+        
+        return results;
     } catch (error) {
         console.error("Error fetching market data:", error);
+        
+        // Fallback to cache if available
+        const cached = localStorage.getItem(`radar_market_cache_${params.type || 'ALL'}`);
+        if (cached && !params.symbol) {
+            console.log("Using cached market data fallback");
+            return JSON.parse(cached);
+        }
+        
         throw error;
     }
 };
@@ -100,14 +115,30 @@ export const fetchMarketHistory = async (symbol, type = 'STOCK', interval = '1D'
 export const fetchMarketNews = async (params = {}) => {
     try {
         const response = await api.get('/news', { params });
-        return response.data?.data ?? response.data;
+        const data = response.data?.data ?? response.data;
+        if (data && data.length > 0) {
+            localStorage.setItem('radar_news_cache', JSON.stringify(data));
+        }
+        return data;
     } catch (error) {
         console.warn("Intelligent news API failed, falling back to basic news:", error.message);
         try {
             const response = await api.get('/market/news', { params });
-            return response.data;
+            const data = response.data;
+            if (data && data.length > 0) {
+                localStorage.setItem('radar_news_cache', JSON.stringify(data));
+            }
+            return data;
         } catch (fallbackError) {
             console.error("All news fetch attempts failed:", fallbackError);
+            
+            // Final fallback to cache
+            const cached = localStorage.getItem('radar_news_cache');
+            if (cached) {
+                console.log("Using cached news fallback");
+                return JSON.parse(cached);
+            }
+            
             throw fallbackError;
         }
     }

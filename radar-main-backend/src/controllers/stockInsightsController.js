@@ -2,10 +2,7 @@ const {
     getStockFundamentals,
     getStockEarningsCalendar,
     getStockNewsSentiment,
-<<<<<<< HEAD
-=======
     getStockSignals,
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 } = require('../services/stockInsightsService');
 
 const getFundamentals = async (req, res) => {
@@ -44,8 +41,6 @@ const getNewsSentiment = async (req, res) => {
     }
 };
 
-<<<<<<< HEAD
-=======
 const getSignals = async (req, res) => {
     try {
         const { term = 'medium' } = req.query;
@@ -59,13 +54,9 @@ const getSignals = async (req, res) => {
     }
 };
 
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 module.exports = {
     getFundamentals,
     getEarningsCalendar,
     getNewsSentiment,
-<<<<<<< HEAD
-=======
     getSignals,
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 };

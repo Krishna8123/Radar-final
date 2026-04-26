@@ -104,7 +104,7 @@
 }
 
 .ticker-wrapper-track--animated {
-  animation: tickerMarquee 26s linear infinite;
+  animation: tickerMarquee 160s linear infinite;
 }
 
 .ticker-track:hover {

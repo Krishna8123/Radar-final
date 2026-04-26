@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import axios from 'axios';
+import api from '../api/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, Star, ArrowLeftRight, Newspaper, Activity, Bell, Edit3, 
@@ -16,44 +16,7 @@ import Header from '../components/common/Header';
 import './InvestorDashboard.css';
 
 // Dummy Data Generator for Testing
-const generateDummyData = (symbol, count = 300, startDate = null, endDate = null) => {
-    const result = [];
-    let price = 500 + (symbol.length * 100);
-    
-    let startTs = startDate ? Math.floor(new Date(startDate).getTime() / 1000) : Math.floor(Date.now() / 1000) - (count * 24 * 60 * 60);
-    let endTs = endDate ? Math.floor(new Date(endDate).getTime() / 1000) : Math.floor(Date.now() / 1000);
-    
-    // Adjust count based on range if provided
-    let actualCount = count;
-    if (startDate && endDate) {
-        actualCount = Math.floor((endTs - startTs) / (24 * 60 * 60)) + 1;
-        if (actualCount <= 0) actualCount = 10;
-        if (actualCount > 1000) actualCount = 1000;
-    }
 
-    const day = 24 * 60 * 60;
-    
-    for (let i = 0; i < actualCount; i++) {
-        const time = startTs + (i * day);
-        const volatility = price * 0.02;
-        const open = price + (Math.random() - 0.5) * volatility;
-        const high = open + Math.random() * volatility;
-        const low = open - Math.random() * volatility;
-        const close = (high + low) / 2 + (Math.random() - 0.5) * (volatility * 0.5);
-        const volume = Math.floor(Math.random() * 10000000);
-        
-        result.push({ 
-            time: time, 
-            open: parseFloat(open.toFixed(2)), 
-            high: parseFloat(high.toFixed(2)), 
-            low: parseFloat(low.toFixed(2)), 
-            close: parseFloat(close.toFixed(2)), 
-            volume: volume 
-        });
-        price = close;
-    }
-    return result;
-};
 
 // 1. Comprehensive Indicator Registry
 const MASTER_INDICATOR_REGISTRY = [
@@ -1009,18 +972,14 @@ const InvestorAdvancedCharts = () => {
     useEffect(() => {
         const fetchUserSettings = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const config = { headers: { Authorization: `Bearer ${token}` } };
-                const res = await axios.get('http://localhost:5000/api/user/settings', config);
+                const res = await api.get('/user/settings');
                 if (res.data.success) {
                     setSettings(prev => ({ ...prev, ...res.data.data }));
                 }
             } catch (err) {
-                console.log("Using local settings fallback");
+                console.log('Using local settings fallback');
                 const saved = localStorage.getItem('radar_chart_settings');
-                if (saved) {
-                    try { setSettings(JSON.parse(saved)); } catch(e) {}
-                }
+                if (saved) { try { setSettings(JSON.parse(saved)); } catch(e) {} }
             }
         };
         fetchUserSettings();
@@ -1032,12 +991,9 @@ const InvestorAdvancedCharts = () => {
             localStorage.setItem('radar_chart_settings', JSON.stringify(settings));
             try {
                 const token = localStorage.getItem('token');
-                if (token) {
-                    const config = { headers: { Authorization: `Bearer ${token}` } };
-                    await axios.post('http://localhost:5000/api/user/settings', settings, config);
-                }
+                if (token) await api.post('/user/settings', settings);
             } catch (err) {
-                console.error("Auto-save failed:", err);
+                console.error('Auto-save failed:', err);
             }
         }, 1000);
         return () => clearTimeout(timer);
@@ -1071,31 +1027,18 @@ const InvestorAdvancedCharts = () => {
                 }
 
                 try {
-                    const res = await axios.get(`http://localhost:5000/api/stocks/${symbol}/history?interval=${intervalMap[globalTimeframe] || '1day'}&exchange=${settings.defaultExchange}`, config);
-
+                    const res = await api.get(`/stocks/${symbol}/history?interval=${intervalMap[globalTimeframe] || '1day'}&exchange=${settings.defaultExchange}`);
                     const rawData = res.data?.data || [];
-                    
-                    let formatted = [];
-                    if (rawData.length === 0) {
-                        formatted = generateDummyData(symbol, 300, dateRange.start, dateRange.end);
-                    } else {
-                        formatted = rawData.map(d => ({
-                            time: d.date || d.time,
-                            open: d.open || 0,
-                            high: d.high || 0,
-                            low: d.low || 0,
-                            close: d.close || 0,
-                            volume: d.volume || 0
-                        })).sort((a, b) => a.time - b.time);
-                    }
-
+                    let formatted = rawData.length === 0 ? [] : rawData.map(d => ({
+                        time: d.date || d.time,
+                        open: d.open || 0, high: d.high || 0, low: d.low || 0, close: d.close || 0, volume: d.volume || 0
+                    })).sort((a, b) => a.time - b.time);
                     dataCache.current[cacheKey] = formatted;
                     newChartDataMap[symbol] = formatted;
                     dataChanged = true;
                 } catch (err) {
-                    const dummy = generateDummyData(symbol, 300, dateRange.start, dateRange.end);
-                    dataCache.current[cacheKey] = dummy;
-                    newChartDataMap[symbol] = dummy;
+                    dataCache.current[cacheKey] = [];
+                    newChartDataMap[symbol] = [];
                     dataChanged = true;
                 }
             }
@@ -1127,7 +1070,7 @@ const InvestorAdvancedCharts = () => {
             
             for (const symbol of symbolsToFetch) {
                 try {
-                    const res = await axios.get(`http://localhost:5000/api/stocks/${symbol}/live`, config);
+                    const res = await api.get(`/stocks/${symbol}/live`);
                     if (res.data.success && res.data.data) {
                         const newPoint = {
                             time: res.data.data.time,
@@ -1171,10 +1114,8 @@ const InvestorAdvancedCharts = () => {
         const fetchCompanyInfo = async () => {
             try {
                 setIsInfoLoading(true);
-                const token = localStorage.getItem('token');
-                const config = { headers: { Authorization: `Bearer ${token}` } };
                 const searchSymbol = baseSymbol === 'JDI' ? 'JINDRILL' : baseSymbol;
-                const res = await axios.get(`http://localhost:5000/api/stocks/${searchSymbol}/fundamentals`, config);
+                const res = await api.get(`/stocks/${searchSymbol}/fundamentals`);
                 setCompanyInfo(res.data.data);
             } catch (err) {
                 setCompanyInfo(null);
@@ -1192,15 +1133,11 @@ const InvestorAdvancedCharts = () => {
                 const token = localStorage.getItem('token');
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 // Fetching news for the specific symbol
-                const res = await axios.get(`http://localhost:5000/api/stocks/${baseSymbol}/news`, config);
+                const res = await api.get(`/stocks/${baseSymbol}/news`);
                 setNews(res.data?.data || []);
             } catch (err) {
                 // Fallback mock news if API fails
-                setNews([
-                    { id: 1, title: `${baseSymbol} Reports Strong Q3 Earnings, Beats Analyst Estimates`, source: "Reuters", time: "2h ago" },
-                    { id: 2, title: `New Expansion Project Announced for ${baseSymbol} in Southern Region`, source: "Bloomberg", time: "5h ago" },
-                    { id: 3, title: `Market Update: ${baseSymbol} Shares Hit 52-Week High Amid Bullish Sentiment`, source: "MarketWatch", time: "1d ago" }
-                ]);
+                setNews([]);
             } finally {
                 setIsNewsLoading(false);
             }

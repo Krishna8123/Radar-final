@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -14,6 +14,7 @@ import ScreenerFilterPanel from '../components/screener/ScreenerFilterPanel';
 import ScreenerStockCard from '../components/screener/ScreenerStockCard';
 import ScreenerResultsTable from '../components/screener/ScreenerResultsTable';
 import './ScreenerPage.css';
+import { runScreenerScan } from '../api/screenerApi';
 
 const ScreenerPage = () => {
   const navigate = useNavigate();
@@ -240,36 +241,62 @@ const ScreenerPage = () => {
     },
   ];
 
-  useEffect(() => {
+  // Live load on mount — replaces MOCK_STOCKS
+  const fetchAndSet = useCallback(async () => {
     setLoading(true);
+    try {
+      const data = await runScreenerScan(filters);
+      const raw = data?.results ?? data?.stocks ?? (Array.isArray(data) ? data : []);
+      const normalized = raw.map((s, i) => ({
+        id: s._id || s.id || s.symbol || i,
+        symbol: String(s.symbol || '').replace(/\.(NS|BO)$/i, ''),
+        name: s.name || s.companyName || '',
+        price: Number(s.price ?? 0),
+        change: Number(s.changePercent ?? s.change ?? 0),
+        changePercent: Number(s.changePercent ?? 0),
+        volume: Number(s.volume ?? 0),
+        sector: s.sector || 'Equity',
+        signal: s.signal || s.signalType || (Number(s.changePercent ?? 0) > 1.5 ? 'BREAKOUT' : 'MOMENTUM'),
+        signalStrength: s.signalStrength || 'Medium',
+        signalType: s.signalType || s.signal || '',
+        rsi: Number(s.rsi ?? 50),
+        pe: Number(s.pe ?? 0),
+        trend: s.trend || (Number(s.changePercent ?? 0) > 0 ? 'bullish' : 'bearish'),
+        sentiment: Number(s.sentiment ?? (Number(s.changePercent ?? 0) * 10)),
+        strength: s.strength || `Confidence ${Number(s.confidence ?? 72)}%`,
+        entry: Number(s.entry ?? s.price ?? 0),
+        target: Number(s.target ?? (s.price ?? 0) * 1.04),
+        stopLoss: Number(s.stopLoss ?? s.sl ?? (s.price ?? 0) * 0.985),
+        rvol: Number(s.volumeRatio ?? s.rvol ?? 1.2),
+        timeframe: s.timeframe || '5m',
+        chart: s.chart || s.history || [],
+      }));
+      setStocks(normalized);
+      setFilteredStocks(normalized);
+    } catch (err) {
+      console.warn('ScreenerPage load failed:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
-          if (parsed.filters && typeof parsed.filters === 'object') {
-            setFilters((prev) => ({ ...prev, ...parsed.filters }));
-          }
-          if (typeof parsed.activeSignalTab === 'string') {
-            setActiveSignalTab(parsed.activeSignalTab);
-          }
-          if (typeof parsed.viewMode === 'string') {
-            setViewMode(parsed.viewMode);
-          }
-          if (typeof parsed.filterOpen === 'boolean') {
-            setFilterOpen(parsed.filterOpen);
-          }
+          if (parsed.filters && typeof parsed.filters === 'object') setFilters((prev) => ({ ...prev, ...parsed.filters }));
+          if (typeof parsed.activeSignalTab === 'string') setActiveSignalTab(parsed.activeSignalTab);
+          if (typeof parsed.viewMode === 'string') setViewMode(parsed.viewMode);
+          if (typeof parsed.filterOpen === 'boolean') setFilterOpen(parsed.filterOpen);
         }
       }
     } catch (error) {
       console.error('Failed to restore screener settings:', error);
     }
-    setTimeout(() => {
-      setStocks(MOCK_STOCKS);
-      setFilteredStocks(MOCK_STOCKS);
-      setLoading(false);
-    }, 600);
-  }, []);
+    fetchAndSet();
+  }, [fetchAndSet]);
 
   useEffect(() => {
     return () => {
@@ -341,14 +368,16 @@ const ScreenerPage = () => {
     noticeTimerRef.current = setTimeout(() => setActionNotice(''), 2400);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await fetchAndSet();
       setLastUpdated(new Date());
+      pushNotice('Scanner refreshed with live data.');
+    } finally {
       setLoading(false);
-      pushNotice('Scanner refreshed.');
-    }, 500);
-  };
+    }
+  }, [fetchAndSet]);
 
   const toggleStockSelection = (stockId) => {
     setSelectedStocks((prev) =>

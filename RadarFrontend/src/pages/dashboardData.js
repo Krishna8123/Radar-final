@@ -48,22 +48,18 @@ export const mockNotifications = [
 ];
 
 export const generatePriceData = (basePrice, points, volatility = 100) => {
-    let price = basePrice;
     return Array.from({ length: points }, (_, i) => {
-        price += (Math.random() - 0.48) * volatility;
+        const price = basePrice + Math.sin(i / 5) * volatility;
         return { time: i, price: Math.max(price, basePrice * 0.7) };
     });
 };
 
 export const generateCandlestickData = (basePrice, points, volatility = 100) => {
-    let price = basePrice;
     return Array.from({ length: points }, (_, i) => {
-        const open = price;
-        const change = (Math.random() - 0.48) * volatility;
-        price += change;
-        const close = Math.max(price, basePrice * 0.7);
-        const high = Math.max(open, close) + Math.random() * volatility * 0.3;
-        const low = Math.min(open, close) - Math.random() * volatility * 0.3;
+        const open = basePrice + Math.sin(i / 5) * volatility;
+        const close = basePrice + Math.sin((i + 1) / 5) * volatility;
+        const high = Math.max(open, close) + volatility * 0.2;
+        const low = Math.min(open, close) - volatility * 0.2;
         return { time: i, open, high, low, close };
     });
 };

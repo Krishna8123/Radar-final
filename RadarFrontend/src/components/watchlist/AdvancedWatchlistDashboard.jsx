@@ -29,6 +29,7 @@ import { ToolbarButton, NotificationBanner, ExportMenu } from './EnhancedWatchli
 import { useWatchlistEnhancements } from '../../hooks/useWatchlistEnhancements';
 import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS_HELP } from '../../hooks/useKeyboardShortcuts';
 import { sortStocks, SORT_OPTIONS } from '../../hooks/watchlistSorting';
+import api, { hasAuthToken } from '../../api/api';
 
 const MOCK_STOCKS = [
   {
@@ -185,20 +186,59 @@ export default function AdvancedWatchlistDashboard() {
     exportToCSV,
   } = useWatchlistEnhancements(stocks);
 
+  // Live data load — replaces Math.random() simulation
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStocks((prev) =>
-        prev.map((stock) => ({
-          ...stock,
-          price: stock.price * (1 + (Math.random() - 0.5) * 0.01),
-          change: stock.change + (Math.random() - 0.5) * 0.5,
-          percent: stock.percent + (Math.random() - 0.5) * 0.3,
-          volume: Math.floor(stock.volume * (0.8 + Math.random() * 0.4)),
-        }))
-      );
-    }, 3000);
+    let active = true;
 
-    return () => clearInterval(interval);
+    const normalizeQuote = (q, idx) => ({
+      id: q._id || q.id || idx + 1,
+      symbol: String(q.symbol || '').replace(/\.(NS|BO)$/i, ''),
+      name: q.name || q.companyName || q.symbol || '',
+      price: Number(q.price ?? q.ltp ?? q.lastPrice ?? 0),
+      change: Number(q.change ?? 0),
+      percent: Number(q.changePercent ?? q.pChange ?? 0),
+      volume: Number(q.volume ?? 0),
+      marketCap: Number(q.marketCap ?? 0),
+      rsi: Number(q.rsi ?? 50),
+      macd: q.macd || 'neutral',
+      high52w: Number(q.high52w ?? q.yearHigh ?? 0),
+      low52w: Number(q.low52w ?? q.yearLow ?? 0),
+      vwap: Number(q.vwap ?? q.price ?? 0),
+      sector: q.sector || 'Equity',
+      status: Number(q.changePercent ?? 0) > 2 ? 'breakout' : Number(q.changePercent ?? 0) > 0.5 ? 'strong' : Number(q.changePercent ?? 0) < -0.5 ? 'weak' : 'neutral',
+    });
+
+    const load = async (silent = false) => {
+      try {
+        if (!hasAuthToken()) return; // Not logged in — keep mock
+
+        const wlRes = await api.get('/watchlists');
+        const wlData = wlRes.data?.data ?? wlRes.data;
+        const symbols = (Array.isArray(wlData)
+          ? wlData.flatMap(w => w.symbols ?? w.stocks ?? [])
+          : []).filter(Boolean).map(s => String(s).replace(/\.(NS|BO)$/i, ''));
+
+        if (!symbols.length || !active) return;
+
+        const mktRes = await api.get(`/market?symbols=${encodeURIComponent(symbols.join(','))}`);
+        const quotes = mktRes.data?.data ?? mktRes.data;
+
+        if (Array.isArray(quotes) && quotes.length && active) {
+          const mapped = quotes.map(normalizeQuote);
+          setStocks(mapped);
+          if (!silent) {
+            setSelectedStock(mapped[0]);
+            setSelectedStockIndex(0);
+          }
+        }
+      } catch (err) {
+        console.warn('AdvancedWatchlistDashboard live load failed:', err.message);
+      }
+    };
+
+    load(false);
+    const interval = setInterval(() => load(true), 30000);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
   const filteredStocks = useMemo(() => {

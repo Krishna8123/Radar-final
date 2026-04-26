@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 const generateMockDepth = () => {
     const generateLevel = (base, offset) => Array.from({ length: 8 }, (_, i) => ({
         price: base + (offset * (i + 1)),
-        size: Math.floor(Math.random() * 5000) + 100,
+        size: (Math.floor(base / 10) + (i * 150)) % 5000 + 100,
         total: 0
     }));
 

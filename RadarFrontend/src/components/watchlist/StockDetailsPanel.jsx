@@ -18,35 +18,21 @@ import {
 const generateChartData = (basePrice, points = 50) => {
   return Array.from({ length: points }, (_, i) => ({
     time: `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`,
-    price: basePrice * (0.95 + Math.random() * 0.1),
-    volume: Math.floor(Math.random() * 1000000),
-    sma20: basePrice * (0.98 + Math.random() * 0.04),
+    price: basePrice * (1 + Math.sin(i / 5) * 0.02),
+    volume: Math.floor(100000 + Math.sin(i / 3) * 50000),
+    sma20: basePrice * (1 + Math.sin(i / 7) * 0.015),
   }));
 };
 
 const generateOrderBook = () => {
   return {
-    bids: [
-      { price: 2840, quantity: 2500, color: 'bg-emerald-500/20' },
-      { price: 2835, quantity: 1800, color: 'bg-emerald-500/15' },
-      { price: 2830, quantity: 1500, color: 'bg-emerald-500/10' },
-    ],
-    asks: [
-      { price: 2850, quantity: 1200, color: 'bg-rose-500/10' },
-      { price: 2855, quantity: 1600, color: 'bg-rose-500/15' },
-      { price: 2860, quantity: 2000, color: 'bg-rose-500/20' },
-    ],
+    bids: [],
+    asks: [],
   };
 };
 
 const generateRecentTrades = () => {
-  return [
-    { time: '14:32:45', price: 2845.50, quantity: 500, side: 'buy' },
-    { time: '14:32:38', price: 2843.75, quantity: 250, side: 'sell' },
-    { time: '14:32:25', price: 2846.20, quantity: 1000, side: 'buy' },
-    { time: '14:32:10', price: 2844.90, quantity: 750, side: 'sell' },
-    { time: '14:31:58', price: 2847.10, quantity: 500, side: 'buy' },
-  ];
+  return [];
 };
 
 const StockDetailsPanel = ({ stock, onClose, onAddAlert, mode = 'research', onResearchAction }) => {

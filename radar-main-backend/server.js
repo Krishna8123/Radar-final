@@ -213,10 +213,7 @@ app.use('/api/options',       require('./src/routes/optionsRoutes'));
 app.use('/api/backtest',      require('./src/routes/backtestRoutes'));
 app.use('/api/signals',       require('./src/routes/signalsRoutes'));
 app.use('/api/health',        require('./src/routes/healthRoutes'));
-<<<<<<< HEAD
-=======
 app.use('/api/notes',         require('./src/routes/noteRoutes'));
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 app.use('/api',               require('./src/routes/contractRoutes'));
 app.use(notFound);
 app.use(errorHandler);

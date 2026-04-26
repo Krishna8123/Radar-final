@@ -4,7 +4,7 @@ import { fetchPortfolio } from '../../api/portfolioApi';
 
 const displaySymbol = (value) => String(value || '').replace(/\.(NS|BO)$/i, '');
 
-const YourInvestments = () => {
+const YourInvestments = ({ onStartInvesting }) => {
     const [portfolio, setPortfolio] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
@@ -133,7 +133,10 @@ const YourInvestments = () => {
                             : 'Place your first trade to populate holdings, balances, and allocation insights here.'}
                     </p>
 
-                    <button className="px-8 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[11px] font-black rounded-xl hover:shadow-[0_8px_20px_rgba(59,130,246,0.3)] hover:-translate-y-0.5 transition-all shadow-md active:scale-95 uppercase tracking-wider inline-flex items-center gap-2">
+                    <button 
+                        onClick={() => onStartInvesting && onStartInvesting('WATCHLIST')}
+                        className="px-8 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[11px] font-black rounded-xl hover:shadow-[0_8px_20px_rgba(59,130,246,0.3)] hover:-translate-y-0.5 transition-all shadow-md active:scale-95 uppercase tracking-wider inline-flex items-center gap-2"
+                    >
                         <ArrowUpRight size={14} />
                         Start Investing
                     </button>

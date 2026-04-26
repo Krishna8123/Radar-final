@@ -14,12 +14,12 @@ const getStoredUser = () => {
 const buildFallbackProfile = () => {
     const storedUser = getStoredUser();
     const email = localStorage.getItem('email') || storedUser?.email || '';
-    const username = storedUser?.name || storedUser?.username || (email ? email.split('@')[0] : 'User');
+    const username = localStorage.getItem('username') || storedUser?.name || storedUser?.username || (email ? email.split('@')[0] : 'Radar User');
 
     return {
-        username,
-        email,
-        preferredMode: localStorage.getItem('mode') || storedUser?.preferredMode || null,
+        username: username,
+        email: email || 'account@radar.com',
+        preferredMode: localStorage.getItem('mode') || storedUser?.preferredMode || 'INVESTOR',
         watchlist: []
     };
 };

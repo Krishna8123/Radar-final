@@ -1,7 +1,8 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, TrendingUp, TrendingDown, Layers, Activity, AlertTriangle, Zap, BarChart2 } from 'lucide-react';
-import { stockResearchMock } from '../data/stockResearchMock';
+import { fetchTechnicalSummary } from '../api/technicalApi';
+import api from '../api/api';
 import TradeDecisionZone from '../components/trader/stockResearch/TradeDecisionZone';
 
 const TraderChartPanel = lazy(() => import('../components/trader/stockResearch/TraderChartPanel'));
@@ -46,16 +47,7 @@ const Spark = ({ d, color = '#22d3ee' }) => {
 };
 
 /* watchlist */
-const WATCHLIST = [
-  { symbol: 'RELIANCE', price: 2870.15, chg: 1.83 },
-  { symbol: 'HDFCBANK', price: 1450.2, chg: -0.45 },
-  { symbol: 'INFY', price: 1620.1, chg: 2.1 },
-  { symbol: 'TCS', price: 3910.05, chg: 0.85 },
-  { symbol: 'ICICIBANK', price: 1045.6, chg: 1.15 },
-  { symbol: 'SBIN', price: 765.4, chg: -1.2 },
-  { symbol: 'ITC', price: 420.8, chg: 0.3 },
-  { symbol: 'LT', price: 3450.25, chg: 1.8 },
-];
+
 
 const InsightsSection = () => {
   const items = [
@@ -283,28 +275,72 @@ const KeyLevelsSignal = ({ keyLevels }) => (
 
 const TABS = ['Insights', 'Activity', 'Performance', 'Fundamentals'];
 
+// Fallback empty stock shape
+const EMPTY_STOCK = {
+  symbol: '', name: '', price: 0, changePercent: 0, volume: 0,
+  atr: null, dayRange: null, sentiment: null, exchange: 'NSE',
+};
+
 export default function TraderStockPage({ overrideSymbol, onBack }) {
   const navigate = useNavigate();
   const { symbol: routeSymbol } = useParams();
-  const symbol = overrideSymbol || routeSymbol || stockResearchMock.stock.symbol;
+  const symbol = overrideSymbol || routeSymbol || 'RELIANCE';
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(stockResearchMock);
+  const [stock, setStock] = useState({ ...EMPTY_STOCK, symbol });
+  const [keyLevels, setKeyLevels] = useState({});
   const [tab, setTab] = useState('Insights');
+  const [watchlist, setWatchlist] = useState([]);
 
   useEffect(() => {
+    if (!symbol) return;
+    let active = true;
     setLoading(true);
-    const t = setTimeout(() => {
-      setData((p) => ({
-        ...p,
-        stock: {
-          ...p.stock,
-          symbol,
-          name: symbol === p.stock.symbol ? p.stock.name : `${symbol} Ltd.`,
-        },
-      }));
+
+    Promise.allSettled([
+      fetchTechnicalSummary('stock', symbol),
+      api.get(`/market?symbols=${encodeURIComponent(symbol)}`).catch(() => null),
+      api.get('/market?type=STOCK&limit=10').catch(() => null),
+    ]).then(([techRes, mktRes, wlRes]) => {
+      if (!active) return;
+
+      const tech = techRes.status === 'fulfilled' ? techRes.value : null;
+      const mktArr = mktRes?.status === 'fulfilled' ? (mktRes.value?.data?.data ?? mktRes.value?.data ?? []) : [];
+      const mkt = Array.isArray(mktArr) ? mktArr[0] : mktArr;
+      
+      const wlArr = wlRes?.status === 'fulfilled' ? (wlRes.value?.data?.data ?? wlRes.value?.data ?? []) : [];
+
+      const price = Number(mkt?.price ?? mkt?.ltp ?? tech?.indicators?.ema20 ?? 0);
+      const changePercent = Number(mkt?.changePercent ?? mkt?.pChange ?? 0);
+
+      setStock({
+        symbol: symbol.replace(/\.(NS|BO)$/i, ''),
+        name: mkt?.name ?? mkt?.companyName ?? `${symbol} Ltd.`,
+        price,
+        changePercent,
+        volume: mkt?.volume ? `${(Number(mkt.volume) / 1e6).toFixed(2)}M` : '—',
+        atr: tech?.indicators?.atr ? Number(tech.indicators.atr).toFixed(1) : '—',
+        dayRange: mkt?.dayLow && mkt?.dayHigh ? `${mkt.dayLow} – ${mkt.dayHigh}` : '—',
+        sentiment: tech?.score?.bias ?? '—',
+        exchange: 'NSE',
+      });
+
+      setKeyLevels({
+        support: { s1: tech?.indicators?.support ?? null, s2: null },
+        resistance: { r1: tech?.indicators?.resistance ?? null, r2: null },
+      });
+      
+      if (Array.isArray(wlArr)) {
+        setWatchlist(wlArr.map(w => ({
+          symbol: w.symbol.replace(/\.(NS|BO)$/i, ''),
+          price: Number(w.price || w.ltp || 0),
+          chg: Number(w.changePercent || w.pChange || 0)
+        })));
+      }
+
       setLoading(false);
-    }, 350);
-    return () => clearTimeout(t);
+    });
+
+    return () => { active = false; };
   }, [symbol]);
 
   if (loading) {
@@ -318,7 +354,6 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
     );
   }
 
-  const { stock } = data;
   const pos = stock.changePercent >= 0;
 
   return (
@@ -340,11 +375,11 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-xl font-black text-white">{stock.symbol}</h1>
-            <p className="text-[10px] font-semibold text-slate-500">{stock.name} · {stock.exchange} · Energy</p>
+            <p className="text-[10px] font-semibold text-slate-500">{stock.name} · {stock.exchange} · Equity</p>
           </div>
           <div className={`flex items-center gap-1.5 text-2xl font-black ${pos ? 'text-emerald-400' : 'text-rose-400'}`}>
             {pos ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-            Rs {Number(stock.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            ₹ {Number(stock.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             <span className="text-sm">{pos ? '+' : ''}{Number(stock.changePercent).toFixed(2)}%</span>
           </div>
         </div>
@@ -361,7 +396,7 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
             <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500"><Layers size={11} />Watchlist</div>
           </div>
           <div className="space-y-1 p-2">
-            {WATCHLIST.map((w) => (
+            {watchlist.map((w) => (
               <div
                 key={w.symbol}
                 onClick={() => navigate(`/stocks/${w.symbol}`)}
@@ -375,7 +410,7 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
                   </div>
                   <div className="text-right">
                     <div className="text-xs font-bold text-white">{w.price.toFixed(2)}</div>
-                    <div className={`text-[10px] font-bold ${w.chg >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{w.chg >= 0 ? '+' : ''}{w.chg}%</div>
+                    <div className={`text-[10px] font-bold ${w.chg >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{w.chg >= 0 ? '+' : ''}{w.chg.toFixed(2)}%</div>
                   </div>
                 </div>
               </div>
@@ -398,8 +433,8 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
             </Suspense>
 
             <div className="px-4 space-y-5">
-              <TradeDecisionZone stock={stock} keyLevels={data.keyLevels} />
-              <KeyLevelsSignal keyLevels={data.keyLevels} />
+              <TradeDecisionZone stock={stock} keyLevels={keyLevels} />
+              <KeyLevelsSignal keyLevels={keyLevels} />
 
               <div className="overflow-hidden rounded-2xl" style={{ background: '#0B1220', boxShadow: '0 20px 60px rgba(0,0,0,0.8),0 0 0 1px rgba(255,255,255,0.04)' }}>
               <div className="flex overflow-x-auto border-b border-white/5" style={{ scrollbarWidth: 'none' }}>
@@ -417,8 +452,8 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
               <div className="p-6">
                 {tab === 'Insights' && <InsightsSection />}
                 {tab === 'Activity' && <ActivitySection />}
-                {tab === 'Performance' && <PerformanceSection data={data} />}
-                {tab === 'Fundamentals' && <FundamentalsSection data={data} />}
+                {tab === 'Performance' && <PerformanceSection data={{}} />}
+                {tab === 'Fundamentals' && <FundamentalsSection data={{}} />}
               </div>
             </div>
           </div>

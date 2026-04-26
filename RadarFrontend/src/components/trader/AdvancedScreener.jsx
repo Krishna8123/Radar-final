@@ -77,8 +77,8 @@ const AdvancedScreener = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSignalModal, setShowSignalModal] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState(mockResults);
-    const [isLoading, setIsLoading] = useState(false);
+    const [results, setResults] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const style = document.createElement('style');
@@ -156,6 +156,45 @@ const AdvancedScreener = () => {
         }
         setOpenFilter(null);
     };
+
+    // Live screener scan — replaces mockResults
+    useEffect(() => {
+        let active = true;
+        const scan = async () => {
+            setIsLoading(true);
+            try {
+                const data = await runScreenerScan(activeFilters);
+                if (!active) return;
+                const rows = data?.results ?? data?.stocks ?? (Array.isArray(data) ? data : []);
+                if (rows.length > 0) {
+                    setResults(rows.map((s, i) => ({
+                        id: (s.symbol || s.ticker || s.id || `r-${i}`).replace(/\.(NS|BO)$/i, ''),
+                        name: s.name || s.companyName || '',
+                        price: s.price != null ? `₹${Number(s.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—',
+                        change: s.changePercent != null ? `${Number(s.changePercent) >= 0 ? '+' : ''}${Number(s.changePercent).toFixed(2)}%` : '0.00%',
+                        isPositive: Number(s.changePercent ?? 0) >= 0,
+                        mcap: s.marketCap ? `₹${(s.marketCap / 1e12).toFixed(1)}T` : '—',
+                        sector: s.sector || 'Equity',
+                        why: s.why || s.signal || s.reason || 'Matched screener criteria.',
+                        tags: s.tags || [s.sector || 'Equity'].filter(Boolean),
+                        confidence: Number(s.confidence ?? s.score ?? 80),
+                        yield: s.dividendYield ? `${s.dividendYield}%` : '—',
+                        beta: Number(s.beta ?? 1),
+                        volume: s.volume ? `${(Number(s.volume) / 1e6).toFixed(1)}M` : '—',
+                        pe: Number(s.pe ?? 0),
+                        roe: s.roe ? `${s.roe}%` : '—',
+                        trend: s.trend || Array.from({ length: 5 }, (_, k) => Number(s.price ?? 100) * (1 + k * 0.002)),
+                    })));
+                }
+            } catch (err) {
+                console.warn('AdvancedScreener scan failed:', err.message);
+            } finally {
+                if (active) setIsLoading(false);
+            }
+        };
+        scan();
+        return () => { active = false; };
+    }, [JSON.stringify(activeFilters)]);
 
     const filteredResults = results.filter(stock => {
         const id = stock.id || stock.symbol || '';
@@ -401,7 +440,11 @@ const AdvancedScreener = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#30363d]">
-                                {filteredResults.map(stock => (
+                                {isLoading ? (
+                                    <tr><td colSpan={8} className="p-8 text-center text-[#8b949e] text-sm font-bold animate-pulse">Scanning market data...</td></tr>
+                                ) : filteredResults.length === 0 ? (
+                                    <tr><td colSpan={8} className="p-8 text-center text-[#8b949e] text-sm font-bold">No results matched your filters.</td></tr>
+                                ) : filteredResults.map(stock => (
                                     <tr key={stock.id} className="hover:bg-white/[0.02] transition-colors group">
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">

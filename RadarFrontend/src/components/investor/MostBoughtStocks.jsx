@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bookmark, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { fetchPulse } from '../../api/analyticsApi';
 
@@ -12,6 +13,7 @@ const mockMostBought = [
 ];
 
 const MostBoughtStocks = () => {
+    const navigate = useNavigate();
     const [pulse, setPulse] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
@@ -24,7 +26,7 @@ const MostBoughtStocks = () => {
                 const response = await fetchPulse();
                 setPulse(response);
             } catch (error) {
-                console.error('Failed to load pre-market pulse:', error);
+                console.error('Failed to load market pulse:', error);
                 setHasError(true);
             } finally {
                 setIsLoading(false);
@@ -74,6 +76,12 @@ const MostBoughtStocks = () => {
         return mockMostBought;
     }, [pulse]);
 
+    const openStockPage = (name) => {
+        const symbol = String(name || '').trim();
+        if (!symbol) return;
+        navigate(`/investor-stock/${encodeURIComponent(symbol.toUpperCase())}`);
+    };
+
     return (
         <div className="investor-card p-6 h-full flex flex-col relative overflow-hidden">
             {isLoading && (
@@ -84,7 +92,7 @@ const MostBoughtStocks = () => {
 
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h3 className="text-lg font-bold text-slate-800">Pre-Market Pulse</h3>
+                    <h3 className="text-lg font-bold text-slate-800">Market Pulse</h3>
                     <p className="text-[11px] text-slate-400 mt-1">Gap movers and volume shockers from the analytics feed</p>
                 </div>
                 <div className="text-[10px] font-bold text-blue-600 bg-blue-50/70 px-2 py-1 rounded inline-flex items-center gap-1 border border-blue-100/50">
@@ -95,8 +103,12 @@ const MostBoughtStocks = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 content-start">
                 {cards.map((stock) => (
-                    <div key={stock.id} className="p-4 relative group hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 border border-slate-200/80 rounded-2xl bg-white/10 backdrop-blur-sm shadow-sm">
-                        <div className="absolute top-3 right-3 text-slate-300 group-hover:text-blue-500 cursor-pointer transition-colors">
+                    <div 
+                        key={stock.id} 
+                        onClick={() => openStockPage(stock.name)}
+                        className="p-4 relative group hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 border border-slate-200/80 rounded-2xl bg-white/10 backdrop-blur-sm shadow-sm cursor-pointer"
+                    >
+                        <div className="absolute top-3 right-3 text-slate-300 group-hover:text-blue-500 cursor-pointer transition-colors" onClick={(e) => e.stopPropagation()}>
                             <Bookmark size={15} />
                         </div>
 

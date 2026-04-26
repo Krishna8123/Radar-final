@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api, { hasAuthToken } from '../../api/api';
 import {
   Zap,
   Bell,
@@ -118,68 +119,78 @@ const RealTimeScanner = () => {
     );
   }, []);
 
+  // Maps a backend alert object to our display shape
+  const normalizeAlert = useCallback((raw, scanType) => {
+    const scanConfig = SCAN_TYPES.find(s => s.id === scanType) || SCAN_TYPES[0];
+    return {
+      id: raw._id || raw.id || `${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Using random only as last resort fallback for ID
+      timestamp: raw.createdAt ? new Date(raw.createdAt) : new Date(),
+      symbol: String(raw.symbol || '').replace(/\.(NS|BO)$/i, ''),
+      scanType,
+      label: scanConfig.label,
+      color: scanConfig.color,
+      price: Number(raw.price ?? raw.currentPrice ?? 0),
+      change: Number(raw.changePercent ?? raw.change ?? 0),
+      volume: Number(raw.volume ?? 0),
+      message: raw.message || raw.description || `${raw.symbol} triggered ${scanConfig.label}`,
+      icon: scanConfig.icon,
+    };
+  }, []);
+
   const performScan = useCallback(async () => {
     try {
       setLastScanTime(new Date());
-      
-      const newAlerts = [];
-      
-      activeScanTypes.forEach(scanType => {
-        if (Math.random() > 0.7) { // 30% chance of alert
-          const mockStocks = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'SBIN'];
-          const stock = mockStocks[Math.floor(Math.random() * mockStocks.length)];
-          const scanConfig = SCAN_TYPES.find(s => s.id === scanType);
-          
-          newAlerts.push({
-            id: Date.now() + Math.random(),
-            timestamp: new Date(),
-            symbol: stock,
-            scanType,
-            label: scanConfig.label,
-            color: scanConfig.color,
-            price: 2500 + Math.random() * 500,
-            change: (Math.random() - 0.5) * 10,
-            volume: Math.floor(Math.random() * 10000000),
-            message: generateAlertMessage(scanType, stock),
-            icon: scanConfig.icon,
-          });
-        }
-      });
+
+      if (!hasAuthToken()) {
+        // Not logged in — show a placeholder notice but don't spam
+        return;
+      }
+
+      const res = await api.get('/technical/alerts');
+      const payload = res.data?.data ?? res.data;
+      const rawAlerts = Array.isArray(payload) ? payload : [];
+
+      // Filter by active scan types (map backend alert.type -> our scanType ids)
+      const typeMap = {
+        breakout: 'price-breakout',
+        breakdown: 'price-breakdown',
+        volume: 'volume-spike',
+        'rsi-overbought': 'rsi-extreme',
+        'rsi-oversold': 'rsi-extreme',
+        'gap-up': 'gap-up',
+        'gap-down': 'gap-down',
+        '52w-high': 'new-high',
+        '52w-low': 'new-low',
+      };
+
+      const newAlerts = rawAlerts
+        .map(raw => {
+          const scanType = typeMap[raw.type] || raw.type || activeScanTypes[0];
+          return activeScanTypes.includes(scanType) ? normalizeAlert(raw, scanType) : null;
+        })
+        .filter(Boolean);
 
       if (newAlerts.length > 0) {
-        setAlerts(prev => [...newAlerts, ...prev].slice(0, 100)); // Keep last 100 alerts
-        
+        setAlerts(prev => {
+          const existingIds = new Set(prev.map(a => String(a.id)));
+          const fresh = newAlerts.filter(a => !existingIds.has(String(a.id)));
+          return [...fresh, ...prev].slice(0, 100);
+        });
+
         if (soundEnabled && audioRef.current) {
           audioRef.current.play().catch(() => {});
         }
-        
         if (desktopNotifications && 'Notification' in window && Notification.permission === 'granted') {
           new Notification('RADAR Scanner Alert', {
             body: `${newAlerts.length} new alert${newAlerts.length > 1 ? 's' : ''} detected!`,
-            icon: '/radar-icon.png',
+            icon: '/radar-logo-final.jpg',
           });
         }
       }
     } catch (error) {
-      console.error('Scan error:', error);
+      console.warn('Scan fetch error:', error.message);
     }
-  }, [activeScanTypes, soundEnabled, desktopNotifications]);
-
-  const generateAlertMessage = (scanType, symbol) => {
-    const messages = {
-      'price-breakout': `${symbol} breaking above resistance at ₹{price}`,
-      'price-breakdown': `${symbol} breaking below support at ₹{price}`,
-      'volume-spike': `${symbol} volume spike: 2.5x average`,
-      'rsi-extreme': `${symbol} RSI at 75 (overbought)`,
-      'gap-up': `${symbol} gapped up 3.2% at open`,
-      'gap-down': `${symbol} gapped down 2.8% at open`,
-      'new-high': `${symbol} reached new 52-week high!`,
-      'new-low': `${symbol} reached new 52-week low`,
-      'pattern-bullish': `${symbol} forming bullish flag pattern`,
-      'pattern-bearish': `${symbol} forming head & shoulders pattern`,
-    };
-    return messages[scanType] || `Alert for ${symbol}`;
-  };
+  }, [activeScanTypes, soundEnabled, desktopNotifications, normalizeAlert]);
 
   const startScanning = useCallback(() => {
     setIsScanning(true);

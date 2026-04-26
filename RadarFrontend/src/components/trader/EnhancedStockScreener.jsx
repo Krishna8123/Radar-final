@@ -24,6 +24,7 @@ import StockCardGrid from "./stockScreener/StockCardGrid.jsx";
 import TerminalLogs from "./stockScreener/TerminalLogs.jsx";
 import StockDetailsPanel from "../watchlist/StockDetailsPanel.jsx";
 import "./stockScreener/StockScreener.css";
+import { runScreenerScan } from "../../api/screenerApi";
 
 const STORAGE_KEY = "radar_saved_screener_dashboards";
 const INITIAL_ROWS = 12;
@@ -51,97 +52,63 @@ const DEFAULT_FILTERS = {
   macdCross: false,
 };
 
-const BASE_STOCKS = [
-  { symbol: "RELIANCE", name: "Reliance Industries", sector: "Energy", price: 2870, change: 1.8, volume: 9900000 },
-  { symbol: "TCS", name: "Tata Consultancy", sector: "IT", price: 3898, change: -0.7, volume: 3100000 },
-  { symbol: "INFY", name: "Infosys", sector: "IT", price: 1620, change: 1.2, volume: 8500000 },
-  { symbol: "HDFCBANK", name: "HDFC Bank", sector: "Banking", price: 1729, change: 0.9, volume: 7600000 },
-  { symbol: "ICICIBANK", name: "ICICI Bank", sector: "Banking", price: 1204, change: 1.4, volume: 9200000 },
-  { symbol: "SBIN", name: "State Bank of India", sector: "Banking", price: 826, change: -1.1, volume: 11200000 },
-  { symbol: "BAJFINANCE", name: "Bajaj Finance", sector: "Financials", price: 7540, change: 2.1, volume: 1800000 },
-  { symbol: "ITC", name: "ITC Limited", sector: "FMCG", price: 468, change: 0.5, volume: 8400000 },
-];
 
-const enrichTradingMetrics = (stock, index) => {
-  const confidence = Math.max(30, Math.min(98, 65 + (index % 15) * 2 + (index % 7)));
-  const entry = Number((stock.price * 1.002).toFixed(2));
-  const target = Number((stock.price * 1.04).toFixed(2));
-  const sl = Number((stock.price * 0.985).toFixed(2));
-  
-  const signals = ["Volume Spike", "Momentum", "Range Breakout", "EMA Pullback"];
-  const signalType = signals[index % signals.length];
-  
-  const history = Array.from({ length: 12 }).map((_, i) => ({
-    price: stock.price + (Math.random() - 0.5) * (stock.price * 0.02)
-  }));
-
-  return {
-    ...stock,
-    confidence,
-    entry,
-    target,
-    sl,
-    signalType,
-    history,
-    rvol: Number((1.2 + (index % 5) * 0.4).toFixed(2)),
-    rsi: 45 + (index % 25),
-    gap: Number((Math.random() * 5).toFixed(2)),
-    sma50: index % 3 !== 0,
-    sma200: index % 4 !== 0,
-    macdCross: index % 5 === 0,
-    vwap: stock.price * (0.99 + Math.random() * 0.02),
-    high52w: stock.price * (1.1 + Math.random() * 0.2),
-    low52w: stock.price * (0.7 + Math.random() * 0.2),
-    percent: stock.change,
-    changePercent: stock.change
-  };
-};
-
-const MOCK_UNIVERSE = Array.from({ length: 60 }).map((_, index) => {
-  const base = BASE_STOCKS[index % BASE_STOCKS.length];
-  const symbol = index >= BASE_STOCKS.length ? `${base.symbol}.${index}` : base.symbol;
-  return enrichTradingMetrics({ ...base, symbol }, index);
-});
 
 export default function EnhancedStockScreener({ onStockDeepAnalysis }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(INITIAL_ROWS);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [allStocks] = useState(MOCK_UNIVERSE);
-  const [filteredStocks, setFilteredStocks] = useState(MOCK_UNIVERSE);
+  const [allStocks, setAllStocks] = useState([]);
+  const [filteredStocks, setFilteredStocks] = useState([]);
   const [selectedStock, setSelectedStock] = useState(null);
   const contentRef = useRef(null);
 
-  useEffect(() => {
+  // Live scan via screener API
+  const doScan = async (activeFilters) => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      let result = allStocks.filter(stock => {
-        const searchMatch = stock.symbol.toLowerCase().includes(appliedFilters.search.toLowerCase());
-        const sectorMatch = appliedFilters.sector === "All" || stock.sector === appliedFilters.sector;
-        
-        const rvolMatch = !appliedFilters.rvol || stock.rvol >= Number(appliedFilters.rvol);
-        const gapMatch = !appliedFilters.gapMin || stock.gap >= Number(appliedFilters.gapMin);
-        const sma50Match = !appliedFilters.sma50 || stock.sma50;
-        const sma200Match = !appliedFilters.sma200 || stock.sma200;
-        const macdMatch = !appliedFilters.macdCross || stock.macdCross;
-
-        return searchMatch && sectorMatch && rvolMatch && gapMatch && sma50Match && sma200Match && macdMatch;
-      });
-
-      if (activeTab !== "all") {
-        result = result.filter(stock => stock.signalType.toLowerCase().includes(activeTab) || stock.signalType.toLowerCase().replace(' ', '') === activeTab);
-      }
-
-      setFilteredStocks(result);
+    try {
+      const data = await runScreenerScan(activeFilters);
+      const rows = data?.results ?? data?.stocks ?? (Array.isArray(data) ? data : []);
+      const normalized = rows.map((s, i) => ({
+        symbol: String(s.symbol || '').replace(/\.(NS|BO)$/i, ''),
+        name: s.name || s.companyName || '',
+        sector: s.sector || 'Equity',
+        price: Number(s.price ?? 0),
+        change: Number(s.changePercent ?? s.change ?? 0),
+        changePercent: Number(s.changePercent ?? 0),
+        percent: Number(s.changePercent ?? 0),
+        volume: Number(s.volume ?? 0),
+        confidence: Number(s.confidence ?? s.score ?? 0),
+        entry: Number(s.entry ?? s.price ?? 0),
+        target: Number(s.target ?? 0),
+        sl: Number(s.sl ?? 0),
+        signalType: s.signalType || 'N/A',
+        history: s.history || [],
+        rvol: Number(s.volumeRatio ?? s.rvol ?? 0),
+        rsi: Number(s.rsi ?? 0),
+        gap: Number(s.gap ?? 0),
+        sma50: Boolean(s.sma50 ?? false),
+        sma200: Boolean(s.sma200 ?? false),
+        macdCross: Boolean(s.macdCross ?? false),
+        vwap: Number(s.vwap ?? s.price ?? 0),
+        high52w: Number(s.high52w ?? s.yearHigh ?? 0),
+        low52w: Number(s.low52w ?? s.yearLow ?? 0),
+      }));
+      setAllStocks(normalized);
+      setFilteredStocks(normalized);
       setVisibleCount(INITIAL_ROWS);
+    } catch (err) {
+      console.warn('EnhancedStockScreener scan failed:', err.message);
+    } finally {
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [appliedFilters, activeTab, allStocks]);
+    }
+  };
+
+  useEffect(() => { doScan(appliedFilters); }, [appliedFilters, activeTab]);
 
   const visibleRows = useMemo(() => filteredStocks.slice(0, visibleCount), [filteredStocks, visibleCount]);
 
@@ -267,10 +234,6 @@ export default function EnhancedStockScreener({ onStockDeepAnalysis }) {
             ))}
           </div>
           <div className="pool-count">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 animate-pulse">
-               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-               <span className="text-[8px] font-black uppercase tracking-widest">Simulation Active</span>
-            </div>
             <span className="ml-2 text-gray-500">{filteredStocks.length} ASSETS SCANNING</span>
           </div>
         </div>

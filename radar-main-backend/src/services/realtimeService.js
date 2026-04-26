@@ -37,11 +37,19 @@ const CLOSE_CODE_LOG_THROTTLE_MS = 120000;
 const FINNHUB_WS_URL = 'wss://ws.finnhub.io';
 const FINNHUB_WS_DEFAULT_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN'];
 const BINANCE_STREAM_MAP = {
-    BTCUSDT: 'bitcoin',
-    ETHUSDT: 'ethereum',
-    SOLUSDT: 'solana',
-    XRPUSDT: 'ripple',
-    BNBUSDT: 'binance-coin',
+    BTCUSDT: 'BTC',
+    ETHUSDT: 'ETH',
+    SOLUSDT: 'SOL',
+    XRPUSDT: 'XRP',
+    BNBUSDT: 'BNB',
+    ADAUSDT: 'ADA',
+    DOTUSDT: 'DOT',
+    DOGEUSDT: 'DOGE',
+    MATICUSDT: 'MATIC',
+    LINKUSDT: 'LINK',
+    TRXUSDT: 'TRX',
+    LTCUSDT: 'LTC',
+    BCHUSDT: 'BCH',
 };
 const parseFinnhubSymbols = () => {
     const raw = String(process.env.FINNHUB_WS_SYMBOLS || FINNHUB_WS_DEFAULT_SYMBOLS.join(','));
@@ -116,7 +124,8 @@ const scheduleCryptoReconnect = () => {
 };
 
 const startCryptoStream = () => {
-    const wsUrl = 'wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/ethusdt@ticker/solusdt@ticker/xrpusdt@ticker/bnbusdt@ticker';
+    const streams = Object.keys(BINANCE_STREAM_MAP).map(s => `${s.toLowerCase()}@ticker`).join('/');
+    const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
 
     clearCryptoReconnectTimer();
     cleanupCryptoSocket();
@@ -148,11 +157,20 @@ const startCryptoStream = () => {
             if (io) {
                 io.to('ticker').emit('cryptoUpdate', prices);
                 io.to('ticker').emit('price_update', {
-                    symbol: symbol,
+                    symbol: mappedAsset, // Normalized symbol e.g. BTC
                     asset: mappedAsset,
                     price: Number(ticker.c),
                     change: Number(ticker.P),
                     timestamp: new Date().toISOString(),
+                    source: 'binance'
+                });
+                io.to(`symbol:${mappedAsset.toLowerCase()}`).emit('price_update', {
+                    symbol: mappedAsset,
+                    asset: mappedAsset,
+                    price: Number(ticker.c),
+                    change: Number(ticker.P),
+                    timestamp: new Date().toISOString(),
+                    source: 'binance'
                 });
             }
         } catch (error) {
@@ -396,8 +414,6 @@ const startTickerInterval = () => {
         ];
 
         io.to('ticker').emit('indexUpdate', domesticIndices);
-<<<<<<< HEAD
-=======
         
         // Mock stock updates for common symbols if no live provider is active
         const symbols = ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'JINDRILL', 'AAPL', 'TSLA', 'NVDA'];
@@ -419,7 +435,6 @@ const startTickerInterval = () => {
             io.to(`symbol:${sym.toLowerCase()}`).emit('price_update', event);
         });
 
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
         io.to('ticker').emit('price_update', {
             type: 'indices',
             data: domesticIndices,
@@ -431,11 +446,7 @@ const startTickerInterval = () => {
             marketFeed: 'active',
             timestamp: new Date().toISOString(),
         });
-<<<<<<< HEAD
-    }, 5000);
-=======
     }, 3000); // 3 seconds for better perceived "realtime"
->>>>>>> d95aecbc30ebb22d746689c5bb35c7617c0c1627
 };
 
 module.exports = { initRealtimeService };

@@ -51,13 +51,13 @@ const DashboardLoader = ({ label = "Loading dashboard..." }) => (
   </div>
 );
 
-const ProfileHeader = ({ email, initial }) => (
+const ProfileHeader = ({ email, username, initial }) => (
   <div className="dropdown-profile-header">
     <div className="dropdown-profile-avatar" aria-hidden="true">
       {initial}
     </div>
     <div className="dropdown-profile-copy">
-      <p className="dropdown-profile-name">Demo User</p>
+      <p className="dropdown-profile-name">{username || 'Radar User'}</p>
       <p className="dropdown-profile-email">{email}</p>
     </div>
   </div>

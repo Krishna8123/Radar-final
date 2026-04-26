@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ComposedChart,
     Bar,
@@ -11,33 +11,35 @@ import {
     Cell
 } from 'recharts';
 import { Maximize2, Settings, Plus, LayoutGrid, Layers, Info } from 'lucide-react';
+import { fetchOHLCData } from '../../../api/ohlcApi';
 
-const generateMockTechnicalData = (points = 80) => {
-    let basePrice = 2870;
-    return Array.from({ length: points }, (_, i) => {
-        const date = new Date();
-        date.setMinutes(date.getMinutes() - (points - i) * 15);
-        const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        const open = basePrice + (Math.random() - 0.5) * 8;
-        const close = open + (Math.random() - 0.5) * 12;
-        const high = Math.max(open, close) + Math.random() * 4;
-        const low = Math.min(open, close) - Math.random() * 4;
-        basePrice = close;
-        
-        return {
-            time, open, high, low, close,
-            price: close,
-            volume: Math.floor(Math.random() * 700000) + 100000,
-            sma20: close * 0.998,
-            ema50: close * 0.988
-        };
-    });
-};
+const TF_MAP = { '1D': '15m', '5D': '1h', '1M': '1d', '1Y': '1wk' };
 
 export default function AnalysisChart({ symbol = 'RELIANCE' }) {
-    const data = useMemo(() => generateMockTechnicalData(), [symbol]);
-    const [activeTab, setActiveTab] = useState('Overview');
+    const [data, setData] = useState([]);
+    const [activeTab, setActiveTab] = useState('1D');
+
+    useEffect(() => {
+        if (!symbol) return;
+        let active = true;
+        fetchOHLCData(symbol, TF_MAP[activeTab] ?? '15m', 80)
+            .then(raw => {
+                if (!active || !Array.isArray(raw) || !raw.length) return;
+                setData(raw.map(c => ({
+                    time: c.time ?? c.date ?? '',
+                    open: Number(c.open ?? 0),
+                    high: Number(c.high ?? 0),
+                    low: Number(c.low ?? 0),
+                    close: Number(c.close ?? 0),
+                    price: Number(c.close ?? 0),
+                    volume: Number(c.volume ?? 0),
+                    sma20: Number(c.sma20 ?? c.close ?? 0),
+                    ema50: Number(c.ema50 ?? c.close ?? 0),
+                })));
+            })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [symbol, activeTab]);
 
     return (
         <div className="terminal-card flex flex-col h-[520px]">

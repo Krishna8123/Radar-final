@@ -15,7 +15,7 @@ const fallbackTickers = [
 
 const investorClasses = {
     container: "w-full relative overflow-hidden py-4 select-none bg-transparent",
-    content: "flex gap-20 w-max animate-marquee hover:[animation-play-state:paused] items-center",
+    content: "flex gap-20 w-max hover:[animation-play-state:paused] items-center",
     symbol: "text-[10px] font-black text-slate-400 tracking-[0.15em] uppercase mb-1 block",
     value: "text-sm font-black text-slate-800 font-mono",
     positive: "text-emerald-500 bg-emerald-50 border-emerald-100",
@@ -98,7 +98,7 @@ export default function TickerTape({ variant = "dark" }) {
             <motion.div
                 className={classes.content}
                 animate={{ x: ["0%", "-50%"] }}
-                transition={{ repeat: Infinity, ease: "linear", duration: 35 }}
+                transition={{ repeat: Infinity, ease: "linear", duration: 80 }}
             >
                 {duplicatedItems.map((item, index) => {
                     const isPositive = item.change.startsWith("+");

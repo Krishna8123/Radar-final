@@ -43,25 +43,10 @@ import Header from '../components/common/Header';
 import './InvestorStockPage.css';
 import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 import { useSocket } from '../hooks/useSocket';
 
-const chartData = [
-  { time: '9:30', price: 480, open: 470, high: 490, low: 465, close: 480 },
-  { time: '10:30', price: 512, open: 480, high: 520, low: 475, close: 512 },
-  { time: '11:30', price: 505, open: 512, high: 515, low: 495, close: 505 },
-  { time: '12:30', price: 545, open: 505, high: 550, low: 500, close: 545 },
-  { time: '1:30', price: 532, open: 545, high: 550, low: 525, close: 532 },
-  { time: '2:30', price: 555, open: 532, high: 560, low: 530, close: 555 },
-  { time: '3:30', price: 562.90, open: 555, high: 570, low: 550, close: 562.90 },
-];
 
-const financialsData = [
-  { name: '2021', revenue: 950, profit: 120 },
-  { name: '2022', revenue: 1100, profit: 155 },
-  { name: '2023', revenue: 1350, profit: 190 },
-  { name: '2024', revenue: 1708, profit: 245 },
-];
 
 const METRIC_DESCRIPTIONS = {
     'Valuation Metrics': 'Key ratios used to determine if a stock is fairly priced, undervalued, or overvalued.',
@@ -111,9 +96,10 @@ const InvestorStockPage = () => {
   const [errorMetrics, setErrorMetrics] = useState(null);
   
   // Real-time states
-  const [livePrice, setLivePrice] = useState(562.90);
-  const [liveChange, setLiveChange] = useState({ val: 77.00, pct: 15.84 });
+  const [livePrice, setLivePrice] = useState(0);
+  const [liveChange, setLiveChange] = useState({ val: 0, pct: 0 });
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
+  const [historyData, setHistoryData] = useState([]);
 
   // --- Socket.io Integration ---
   const { on, isConnected } = useSocket(['ticker', `symbol:${symbol.toLowerCase()}`]);
@@ -221,13 +207,37 @@ const InvestorStockPage = () => {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
         
-        const [finRes, newsRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/stocks/financials?symbol=${symbol}`, config),
-          axios.get(`http://localhost:5000/api/stocks/news?symbol=${symbol}`, config)
+        const [finRes, newsRes, historyRes, liveRes] = await Promise.all([
+          api.get(`/stocks/financials?symbol=${symbol}`),
+          api.get(`/stocks/news?symbol=${symbol}`),
+          api.get(`/stocks/${symbol}/history?interval=1day`),
+          api.get(`/stocks/${symbol}/live`)
         ]);
 
         setFinancialData(finRes.data);
         setNewsImpactData(newsRes.data);
+        
+        if (historyRes.data?.success) {
+            const raw = historyRes.data.data || [];
+            setHistoryData(raw.map(d => ({
+                time: d.date || d.time,
+                price: d.close,
+                open: d.open,
+                high: d.high,
+                low: d.low,
+                close: d.close
+            })));
+        }
+
+        if (liveRes.data?.success && liveRes.data.data) {
+            const lp = liveRes.data.data;
+            setLivePrice(lp.price || lp.ltp || lp.close || 0);
+            setLiveChange({ 
+                val: lp.change || 0, 
+                pct: lp.changePercent || 0 
+            });
+        }
+
         setErrorMetrics(null);
       } catch (err) {
         console.error("Failed to fetch analytics:", err);
@@ -257,7 +267,7 @@ const InvestorStockPage = () => {
 
   const RenderChart = () => {
     const commonProps = {
-      data: chartData,
+      data: historyData,
       margin: { top: 10, right: 0, left: 0, bottom: 0 }
     };
 
@@ -479,15 +489,15 @@ const InvestorStockPage = () => {
                         <span className="po-range-label">Today's Range</span>
                       </div>
                       <div className="po-visual-track-wrap">
-                        <span className="po-limit-price">Ã¢â€šÂ¹485.00</span>
+                        <span className="po-limit-price">₹{(financialData?.data?.stats?.dayLow || livePrice * 0.98).toFixed(2)}</span>
                         <div className="po-track-main today-gradient">
-                          <div className="po-marker-assembly" style={{ left: '85%' }}>
+                          <div className="po-marker-assembly" style={{ left: '50%' }}>
                             <div className="po-floating-price">₹{livePrice.toFixed(2)} • Current</div>
                             <div className="po-marker-v-line"></div>
                             <div className="po-marker-dot"></div>
                           </div>
                         </div>
-                        <span className="po-limit-price">Ã¢â€šÂ¹570.00</span>
+                        <span className="po-limit-price">₹{(financialData?.data?.stats?.dayHigh || livePrice * 1.02).toFixed(2)}</span>
                       </div>
                     </div>
 
@@ -497,13 +507,13 @@ const InvestorStockPage = () => {
                         <span className="po-context-indicator">Near 52W High</span>
                       </div>
                       <div className="po-visual-track-wrap">
-                        <span className="po-limit-price">Ã¢â€šÂ¹212.10</span>
+                        <span className="po-limit-price">₹{(financialData?.data?.stats?.low52w || livePrice * 0.7).toFixed(2)}</span>
                         <div className="po-track-main fiftytwo-gradient">
-                          <div className="po-marker-assembly" style={{ left: '92%' }}>
+                          <div className="po-marker-assembly" style={{ left: '70%' }}>
                             <div className="po-marker-dot marker-muted"></div>
                           </div>
                         </div>
-                        <span className="po-limit-price">Ã¢â€šÂ¹585.00</span>
+                        <span className="po-limit-price">₹{(financialData?.data?.stats?.high52w || livePrice * 1.3).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -513,28 +523,28 @@ const InvestorStockPage = () => {
                       <div className="ps-icon-circle bg-blue-soft"><Clock size={16} /></div>
                       <div className="ps-data">
                         <span className="ps-label">Open</span>
-                        <span className="ps-value">Ã¢â€šÂ¹492.10</span>
+                        <span className="ps-value">₹{(financialData?.data?.stats?.open || livePrice).toFixed(2)}</span>
                       </div>
                     </div>
                     <div className="po-stat-card-luxury">
                       <div className="ps-icon-circle bg-green-soft"><TrendingUp size={16} /></div>
                       <div className="ps-data">
                         <span className="ps-label">Prev Close</span>
-                        <span className="ps-value">Ã¢â€šÂ¹485.90</span>
+                        <span className="ps-value">₹{(financialData?.data?.stats?.prevClose || livePrice - liveChange.val).toFixed(2)}</span>
                       </div>
                     </div>
                     <div className="po-stat-card-luxury">
                       <div className="ps-icon-circle bg-purple-soft"><Activity size={16} /></div>
                       <div className="ps-data">
                         <span className="ps-label">Volume</span>
-                        <span className="ps-value">61.5M</span>
+                        <span className="ps-value">{financialData?.data?.stats?.volume?.toLocaleString() || '—'}</span>
                       </div>
                     </div>
                     <div className="po-stat-card-luxury">
                       <div className="ps-icon-circle bg-orange-soft"><ShieldCheck size={16} /></div>
                       <div className="ps-data">
-                        <span className="ps-label">Circuit Range</span>
-                        <span className="ps-value text-sm-luxury">Ã¢â€šÂ¹450 Ã¢â‚¬â€œ Ã¢â€šÂ¹675</span>
+                        <span className="ps-label">Market Cap</span>
+                        <span className="ps-value text-sm-luxury">₹{financialData?.data?.fundamentals?.[0]?.value || '—'} Cr</span>
                       </div>
                     </div>
                   </div>
@@ -566,32 +576,30 @@ const InvestorStockPage = () => {
                   <div className="about-col-text">
                     <div className="rc-title-row">
                       <Building2 className="rc-icon" />
-                      <h3>About Company</h3>
+                      <h3>About {symbol}</h3>
                     </div>
                     <p className="about-text-clean">
-                      Jindal Drilling and Industries Limited (JDIL) is a leading provider of services 
-                      to the oil and gas sector in India. Part of the DP Jindal Group, JDIL provides offshore 
-                      drilling services to major global and national oil companies.
+                      {financialData?.data?.description || `${symbol} is an equity instrument listed on the exchange. Detailed company profiling and business operations data is currently being synced from the latest regulatory filings.`}
                     </p>
-                    <button className="text-blue-500 font-bold text-xs mt-2">READ MORE</button>
+                    {financialData?.data?.website && <a href={financialData.data.website} target="_blank" rel="noreferrer" className="text-blue-500 font-bold text-xs mt-2 block uppercase">Visit Website</a>}
                   </div>
                   <div className="about-col-meta">
                     <div className="meta-grid">
                       <div className="meta-item">
                         <span className="meta-l">Sector</span>
-                        <span className="meta-v">Energy</span>
+                        <span className="meta-v">{financialData?.data?.sector || 'Equity'}</span>
                       </div>
                       <div className="meta-item">
                         <span className="meta-l">Industry</span>
-                        <span className="meta-v">Drilling Services</span>
+                        <span className="meta-v">{financialData?.data?.industry || 'Services'}</span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-l">Founded</span>
-                        <span className="meta-v">1983</span>
+                        <span className="meta-l">ISIN</span>
+                        <span className="meta-v">{financialData?.data?.isin || '—'}</span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-l">Headquarters</span>
-                        <span className="meta-v">New Delhi, India</span>
+                        <span className="meta-l">Last Update</span>
+                        <span className="meta-v">{new Date().toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>
@@ -1135,63 +1143,34 @@ const InvestorStockPage = () => {
                 </div>
 
                 <div className="ft-rich-table-grid">
-                  {}
                   <div className="ft-table-side">
-                    {[
-                      { name: 'Market Cap', val: '1,708', status: 'Mid Cap', type: 'neutral', hint: 'Top 250 Company', info: 'Total market value of all outstanding shares.' },
-                      { name: 'P/E Ratio (TTM)', val: '9.21', status: 'Undervalued', type: 'green', hint: 'Below industry avg (18.4)', info: 'Price-to-Earnings ratio.' },
-                      { name: 'P/B Ratio', val: '1.45', status: 'Healthy', type: 'green', hint: 'Asset-rich valuation', info: 'Price-to-Book ratio.' },
-                      { name: 'EV / EBITDA', val: '6.80', status: 'Strong', type: 'green', hint: 'Efficient cash generation', info: 'Enterprise Value to EBITDA.' },
-                      { name: 'PEG Ratio', val: '0.92', status: 'Undervalued', type: 'green', hint: 'Growth-adjusted value', info: 'P/E to Growth ratio.' },
-                      { name: 'ROE (%)', val: '14.7%', status: 'Strong', type: 'green', hint: 'Consistent capital returns', info: 'Return on Equity.' },
-                      { name: 'ROCE (%)', val: '18.2%', status: 'Superior', type: 'green', hint: 'High operating efficiency', info: 'Return on Capital Employed.' },
-                      { name: 'Div Yield', val: '0.85%', status: 'Moderate', type: 'neutral', hint: 'Consistent annual payouts', info: 'Annual dividend yield.' },
-                    ].map((m, i) => (
+                    {(financialData?.data?.fundamentals || []).slice(0, 8).map((m, i) => (
                       <div key={i} className="ft-table-row-item">
                         <div className="ft-row-label">
                           <span>{m.name}</span>
-                          <div className="info-trigger-s">
-                            <HelpCircle size={13} />
-                            <div className="ft-dropdown-s"><strong>{m.name}:</strong> {m.info}</div>
-                          </div>
                         </div>
                         <div className="ft-row-data">
                           <div className="ft-val-top">
-                            <span className="ft-val-bold">{m.val}</span>
-                            <span className={`ft-status-pill tag-${m.type}`}>{m.status}</span>
+                            <span className="ft-val-bold">{m.value}</span>
+                            {m.status && <span className="ft-status-pill tag-neutral">{m.status}</span>}
                           </div>
-                          <span className="ft-val-hint">{m.hint}</span>
+                          {m.hint && <span className="ft-val-hint">{m.hint}</span>}
                         </div>
                       </div>
                     ))}
+                    {(!financialData?.data?.fundamentals) && <p className="text-xs p-4 text-slate-400">Loading metrics...</p>}
                   </div>
 
-                  {}
                   <div className="ft-table-side">
-                    {[
-                      { name: 'Debt to Equity', val: '0.12', status: 'Low Risk', type: 'green', hint: 'Healthy balance sheet', info: 'Proportion of debt relative to equity.' },
-                      { name: 'Int. Coverage', val: '14.2', status: 'Superior', type: 'green', hint: 'Easily services debt', info: 'Ability to pay interest.' },
-                      { name: 'Current Ratio', val: '2.45', status: 'Stable', type: 'green', hint: 'Good short-term liquidity', info: 'Assets to liabilities.' },
-                      { name: 'Rev Growth (YoY)', val: '12.4%', status: 'Consistent', type: 'green', hint: 'Stable top-line growth', info: 'Year-over-year sales.' },
-                      { name: 'Profit Growth', val: '8.9%', status: 'Positive', type: 'green', hint: 'Bottom-line expansion', info: 'Year-over-year profit.' },
-                      { name: 'EPS (TTM)', val: '54.20', status: 'Rising', type: 'green', hint: 'Earnings per share info', info: 'Per share profit.' },
-                      { name: 'Book Value', val: '388.15', status: 'Strong', type: 'green', hint: 'Asset-back valuation', info: 'Asset value per share.' },
-                      { name: 'Face Value', val: '10.00', status: 'Standard', type: 'neutral', hint: 'Standard equity value', info: 'Initial stock cost.' },
-                    ].map((m, i) => (
+                    {(financialData?.data?.fundamentals || []).slice(8, 16).map((m, i) => (
                       <div key={i} className="ft-table-row-item">
                         <div className="ft-row-label">
                           <span>{m.name}</span>
-                          <div className="info-trigger-s">
-                            <HelpCircle size={13} />
-                            <div className="ft-dropdown-s"><strong>{m.name}:</strong> {m.info}</div>
-                          </div>
                         </div>
                         <div className="ft-row-data">
                           <div className="ft-val-top">
-                            <span className="ft-val-bold">{m.val}</span>
-                            <span className={`ft-status-pill tag-${m.type}`}>{m.status}</span>
+                            <span className="ft-val-bold">{m.value}</span>
                           </div>
-                          <span className="ft-val-hint">{m.hint}</span>
                         </div>
                       </div>
                     ))}
@@ -1489,36 +1468,31 @@ const InvestorStockPage = () => {
                   </div>
 
                   <div className="ne-timeline-container shadow-premium">
-                    {[
-                      { date: '12 May', title: 'Q4 Earnings Release', desc: 'Financial results for the quarter ended March 2024.', tag: 'QUARTERLY RESULTS', icon: 'bar', imp: 'Strong growth expected', s: 'green' },
-                      { date: '28 May', title: 'Annual General Meeting', desc: 'Strategic roadmap and expansion plans discussion.', tag: 'AGM', icon: 'users', imp: 'Neutral impact on stock', s: 'amber' },
-                      { date: '04 Jun', title: 'Dividend Payout', desc: 'Final dividend of Ã¢â€šÂ¹2.50 per share proposed.', tag: 'DIVIDEND', icon: 'coin', imp: 'Positive for shareholders', s: 'green' },
-                    ].map((e, idx) => (
+                    {(newsImpactData?.events || []).map((e, idx) => (
                       <div key={idx} className="ne-timeline-item">
                         <div className="ne-t-left">
                           <span className="ne-t-date">{e.date}</span>
                           <div className="ne-t-node">
-                            <div className={`ne-t-icon-bg bg-${e.s}-soft`}>
-                              {e.icon === 'bar' && <Activity size={14} />}
-                              {e.icon === 'users' && <Building2 size={14} />}
-                              {e.icon === 'coin' && <TrendingUp size={14} />}
+                            <div className={`ne-t-icon-bg bg-${e.s || 'blue'}-soft`}>
+                              <Activity size={14} />
                             </div>
-                            {idx < 2 && <div className="ne-t-line"></div>}
+                            {idx < (newsImpactData.events.length - 1) && <div className="ne-t-line"></div>}
                           </div>
                         </div>
                         <div className="ne-t-right">
                           <div className="ne-t-header">
                             <h4 className="ne-t-title">{e.title}</h4>
-                            <span className="ne-t-tag">{e.tag}</span>
+                            <span className="ne-t-tag">{e.tag || 'EVENT'}</span>
                           </div>
                           <p className="ne-t-desc">{e.desc}</p>
-                          <div className={`ne-t-impact impact-${e.s}`}>
+                          <div className={`ne-t-impact impact-${e.s || 'blue'}`}>
                             <div className="ne-dot"></div>
                             <span>{e.imp}</span>
                           </div>
                         </div>
                       </div>
                     ))}
+                    {(newsImpactData?.events?.length === 0) && <p className="text-xs p-8 text-slate-400 text-center">No upcoming events found.</p>}
                   </div>
                 </div>
 
@@ -1534,25 +1508,22 @@ const InvestorStockPage = () => {
                   </div>
 
                   <div className="ne-news-stack">
-                    {[
-                      { source: 'Reuters', time: '2h ago', head: 'Jindal Drilling bags new offshore contract worth Ã¢â€šÂ¹450Cr', desc: 'The contract involves deployment of the jack-up rig "Jindal Pioneer" for a period of 3 years.', imp: 'Positive for long-term growth', s: 'green' },
-                      { source: 'Economic Times', time: '5h ago', head: 'Energy service sector awaits policy clarity on offshore taxes', desc: 'Industry leaders seek rationalization of GST on offshore drilling services in upcoming budget.', imp: 'Short-term volatility expected', s: 'amber' },
-                      { source: 'Mint', time: 'Yesterday', head: 'JDIL shares surge 15% on strong volume breakout', desc: 'Technicals suggest strong accumulation by mid-cap focused funds.', imp: 'Momentum expected to continue', s: 'green' },
-                    ].map((n, idx) => (
+                    {(newsImpactData?.articles || newsImpactData?.news || []).map((n, idx) => (
                       <div key={idx} className="ne-news-card shadow-premium border-l-[4px] border-l-blue-500">
                         <div className="ne-n-top">
                           <span className="ne-n-tag">NEWS</span>
                           <span className="ne-n-source">{n.source}</span>
                           <span className="ne-n-time">{n.time}</span>
                         </div>
-                        <h4 className="ne-n-headline">{n.head}</h4>
-                        <p className="ne-n-summary">{n.desc}</p>
-                        <div className={`ne-n-interpretation impact-${n.s}`}>
+                        <h4 className="ne-n-headline">{n.title || n.head}</h4>
+                        <p className="ne-n-summary">{n.description || n.desc}</p>
+                        <div className={`ne-n-interpretation impact-${n.s || 'blue'}`}>
                           <div className="ne-dot"></div>
-                          <span>Interpretation: {n.imp}</span>
+                          <span>Interpretation: {n.imp || 'Neutral Market Impact'}</span>
                         </div>
                       </div>
                     ))}
+                    {((newsImpactData?.articles || newsImpactData?.news || []).length === 0) && <p className="text-xs p-8 text-slate-400 text-center">No recent news articles found.</p>}
                   </div>
                 </div>
               </div>
