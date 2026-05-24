@@ -7,19 +7,37 @@ const logger = require('./src/config/logger');
 const { connectDB, getDbStatus } = require('./src/config/db');
 require('dotenv').config();
 
-// Configure global Yahoo Finance settings and proxy
-const YahooFinance = require('yahoo-finance2').default;
-YahooFinance.setGlobalConfig({
-    suppressNotices: ['yahooSurvey']
-});
-if (process.env.YAHOO_PROXY_URL) {
-    const { HttpsProxyAgent } = require('https-proxy-agent');
-    YahooFinance.setGlobalConfig({
-        request: {
-            agent: new HttpsProxyAgent(process.env.YAHOO_PROXY_URL)
+// Configure global Yahoo Finance wrapper with proxy and notices cleanup
+const yahooFinanceModule = require('yahoo-finance2');
+const OriginalYahooFinance = yahooFinanceModule.default;
+
+class WrappedYahooFinance extends OriginalYahooFinance {
+    constructor(options = {}) {
+        super(options);
+        // Suppress survey notices
+        if (!this._opts.suppressNotices) {
+            this._opts.suppressNotices = [];
         }
-    });
-    logger.info('Yahoo Finance initialized with HttpsProxyAgent');
+        if (!this._opts.suppressNotices.includes('yahooSurvey')) {
+            this._opts.suppressNotices.push('yahooSurvey');
+        }
+
+        // Apply Proxy Agent for Node.js native fetch if proxy URL is defined
+        if (process.env.YAHOO_PROXY_URL) {
+            const { ProxyAgent } = require('undici');
+            this._opts.fetchOptions = {
+                ...this._opts.fetchOptions,
+                dispatcher: new ProxyAgent({ uri: process.env.YAHOO_PROXY_URL })
+            };
+        }
+    }
+}
+
+// Replace the default export with the wrapped class in Node's module cache
+yahooFinanceModule.default = WrappedYahooFinance;
+
+if (process.env.YAHOO_PROXY_URL) {
+    logger.info('Yahoo Finance initialized with WrappedYahooFinance Undici ProxyAgent');
 }
 
 if (!process.env.JWT_SECRET || !process.env.MONGO_URI) {
