@@ -7,6 +7,21 @@ const logger = require('./src/config/logger');
 const { connectDB, getDbStatus } = require('./src/config/db');
 require('dotenv').config();
 
+// Configure global Yahoo Finance settings and proxy
+const YahooFinance = require('yahoo-finance2').default;
+YahooFinance.setGlobalConfig({
+    suppressNotices: ['yahooSurvey']
+});
+if (process.env.YAHOO_PROXY_URL) {
+    const { HttpsProxyAgent } = require('https-proxy-agent');
+    YahooFinance.setGlobalConfig({
+        request: {
+            agent: new HttpsProxyAgent(process.env.YAHOO_PROXY_URL)
+        }
+    });
+    logger.info('Yahoo Finance initialized with HttpsProxyAgent');
+}
+
 if (!process.env.JWT_SECRET || !process.env.MONGO_URI) {
     logger.error("FATAL ERROR: Missing required environment variables (JWT_SECRET or MONGO_URI).");
     process.exit(1);
