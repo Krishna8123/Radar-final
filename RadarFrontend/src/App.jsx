@@ -27,8 +27,6 @@ const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const TraderStockPage = lazy(() => import('./pages/TraderStockPage'));
 const TradeTerminalPage = lazy(() => import('./pages/TradeTerminalPage'));
 const MinimalChartPage = lazy(() => import('./pages/MinimalChartPage'));
@@ -178,8 +176,6 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/auth/oauth/callback" element={<OAuthCallbackRoute />} />
               <Route path="/stocks/:symbol" element={<TraderStockPage />} />
               <Route path="/trader/stock/:symbol" element={<TraderStockPage />} />

@@ -498,10 +498,16 @@ const forgotPassword = asyncHandler(async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     // Create reset URL
-    const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please click the link below to reset your password: \n\n ${resetUrl}`;
+
+    // Log the link to the console for easy local development testing
+    console.log('\n==================================================');
+    console.log(`🔑 [DEVELOPMENT] PASSWORD RESET LINK FOR ${user.email}:`);
+    console.log(`🔗 ${resetUrl}`);
+    console.log('==================================================\n');
 
     try {
         await sendEmail({

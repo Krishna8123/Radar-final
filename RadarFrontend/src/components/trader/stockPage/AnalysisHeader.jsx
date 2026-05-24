@@ -11,7 +11,7 @@ export default function AnalysisHeader({ stock, onBack }) {
                 {}
                 <div className="flex items-center gap-3">
                     <button onClick={onBack} className="p-1 px-2 border border-blue-500/20 rounded bg-blue-500/5 text-[10px] font-black text-blue-500 uppercase hover:bg-blue-500/10 transition-all">
-                        â† Back
+                        ← Back
                     </button>
                     <div className="h-4 w-[1px] bg-white/5"></div>
                     <div className="flex flex-col">

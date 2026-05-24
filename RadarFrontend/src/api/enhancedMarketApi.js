@@ -32,7 +32,7 @@ export const fetchEnhancedMarketHistory = async (
             });
 
             if (ohlcResult.data && ohlcResult.data.length > 0) {
-                console.log(`[Enhanced] âœ… Using OHLC data (${ohlcResult.count} records)`);
+                console.log(`[Enhanced] ✅ Using OHLC data (${ohlcResult.count} records)`);
 
                 const formattedData = ohlcResult.data.map(candle => ({
                     timestamp: candle.timestamp,
@@ -51,7 +51,7 @@ export const fetchEnhancedMarketHistory = async (
                 };
             }
 
-            console.log(`[Enhanced] âš ï¸ No OHLC data found, falling back to external API`);
+            console.log(`[Enhanced] ⚠️ï¸ No OHLC data found, falling back to external API`);
         }
 
         console.log(`[Enhanced] Using external API for ${symbol}`);
@@ -106,7 +106,7 @@ export const fetchEnhancedChartData = async (symbol, options = {}) => {
             });
 
             if (chartData && chartData.length > 0) {
-                console.log(`[Chart] âœ… Using OHLC storage (${chartData.length} points)`);
+                console.log(`[Chart] ✅ Using OHLC storage (${chartData.length} points)`);
                 return chartData;
             }
         }
@@ -131,7 +131,7 @@ export const fetchSimplePriceHistory = async (symbol, days = 30) => {
         });
 
         if (priceHistory && priceHistory.length > 0) {
-            console.log(`[Price] âœ… Using OHLC storage (${priceHistory.length} days)`);
+            console.log(`[Price] ✅ Using OHLC storage (${priceHistory.length} days)`);
             return priceHistory;
         }
 

@@ -419,55 +419,22 @@ const TraderProfilePage = ({ embedded = false } = {}) => {
         )}
 
         <section className="profile-hero-card">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="profile-file-input"
-            onChange={handlePhotoPick}
-          />
-          <button className="profile-photo" onClick={() => fileRef.current?.click()} aria-label="Change profile picture">
-            {draft.profilePicture || profile?.profilePicture ? (
-              <img src={draft.profilePicture || profile.profilePicture} alt="" />
+          <div className="profile-photo">
+            {profile?.profilePicture ? (
+              <img src={profile.profilePicture} alt="" />
             ) : (
               <span>{initial}</span>
             )}
-            <span className="profile-camera"><Camera size={14} /></span>
-          </button>
+          </div>
 
           <div className="profile-main-copy">
-            {editing ? (
-              <div className="profile-edit-grid">
-                <input name="username" value={draft.username} onChange={handleDraftChange} placeholder="Name" />
-                <input name="email" value={draft.email} onChange={handleDraftChange} placeholder="Email" />
-                <input name="address" value={draft.address} onChange={handleDraftChange} placeholder="Address" />
-              </div>
-            ) : (
-              <>
-                <h1>{profile?.username || 'Radar User'}</h1>
-                <p>{profile?.email || 'account@radar.com'}</p>
-                <p className="profile-address">{profile?.address || 'Address not added yet'}</p>
-                <p className="profile-photo-help">Click the photo to add or change your profile picture.</p>
-              </>
-            )}
+            <h1>{profile?.username || 'Radar User'}</h1>
+            <p>{profile?.email || 'account@radar.com'}</p>
+            <p className="profile-address">{profile?.address || 'Address not added yet'}</p>
           </div>
 
           <div className="profile-actions">
             <span className="profile-status-badge">Active</span>
-            {editing ? (
-              <div className="profile-action-row">
-                <button className="profile-secondary-btn" onClick={handleCancel} disabled={saving}>
-                  <X size={16} /> Cancel
-                </button>
-                <button className="profile-primary-btn" onClick={handleSave} disabled={saving}>
-                  <Save size={16} /> {saving ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            ) : (
-              <button className="profile-primary-btn" onClick={() => setEditing(true)}>
-                <Edit2 size={16} /> Edit Profile
-              </button>
-            )}
           </div>
         </section>
 

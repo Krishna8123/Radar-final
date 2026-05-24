@@ -108,7 +108,7 @@ export const SCREENER_PRESETS = {
   highVolatility: {
     name: 'High Volatility Traders',
     description: 'Volatile stocks for day trading',
-    icon: 'âš¡',
+    icon: '⚡',
     category: 'Trading',
     filters: { volumeStatus: 'high_volume', minScore: 50 },
     sortBy: 'change',
@@ -165,7 +165,7 @@ export const SCREENER_PRESETS = {
   custom: {
     name: 'Custom Scan',
     description: 'Create your own screening criteria',
-    icon: 'âš™ï¸',
+    icon: '⚙️ï¸',
     category: 'Custom',
     filters: {},
     sortBy: 'symbol',
@@ -180,11 +180,11 @@ export const PRESET_CATEGORIES = [
   { id: 'Income', label: 'Income', icon: 'ðŸ’°' },
   { id: 'Growth', label: 'Growth', icon: 'ðŸš€' },
   { id: 'Contrarian', label: 'Contrarian', icon: 'ðŸ”„' },
-  { id: 'Quality', label: 'Quality', icon: 'â­' },
-  { id: 'Trading', label: 'Trading', icon: 'âš¡' },
+  { id: 'Quality', label: 'Quality', icon: '⭐' },
+  { id: 'Trading', label: 'Trading', icon: '⚡' },
   { id: 'Sector', label: 'Sector', icon: 'ðŸŽ¯' },
   { id: 'News', label: 'News', icon: 'ðŸ“°' },
-  { id: 'Custom', label: 'Custom', icon: 'âš™ï¸' },
+  { id: 'Custom', label: 'Custom', icon: '⚙️ï¸' },
 ];
 
 export const getPresetsByCategory = (category) => {

@@ -25,11 +25,11 @@ const DualModeSection = () => {
                 text: '#FFFFFF'
             },
             title: "Built for Market Reading, Not Guesswork",
-            description: "Radar gives traders a fast, structured view of live market data â€” so you can analyze, react, and decide with clarity.",
+            description: "Radar gives traders a fast, structured view of live market data — so you can analyze, react, and decide with clarity.",
             features: [
-                { title: "Minimal Friction Interface", text: "A clean, distraction-free layout that keeps your attention on price, volume, and structure â€” not unnecessary noise." },
+                { title: "Minimal Friction Interface", text: "A clean, distraction-free layout that keeps your attention on price, volume, and structure — not unnecessary noise." },
                 { title: "High-Density Market Visuals", text: "Candlesticks, indicators, and depth charts presented clearly, so complex data is easy to read at a glance." },
-                { title: "Built for Analysis, Not Execution", text: "Radar is your research terminal â€” analyze deeply, validate ideas, then execute trades on your preferred brokerage." }
+                { title: "Built for Analysis, Not Execution", text: "Radar is your research terminal — analyze deeply, validate ideas, then execute trades on your preferred brokerage." }
             ],
             Visual: LaptopTradingView,
             motionConfig: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
@@ -46,7 +46,7 @@ const DualModeSection = () => {
             features: [
                 { title: "Clear Market Direction", text: "Understand how markets move over time with simplified trend views that highlight growth, stability, and momentum." },
                 { title: "Essential Fundamentals", text: "Access key financial metrics and company health indicators without technical overlays or trading noise." },
-                { title: "Designed for Understanding, Not Speed", text: "Radar helps you study, compare, and evaluate â€” so investment decisions come from clarity, not urgency." }
+                { title: "Designed for Understanding, Not Speed", text: "Radar helps you study, compare, and evaluate — so investment decisions come from clarity, not urgency." }
             ],
             Visual: InvestorPortfolioView,
             motionConfig: { duration: 0.8, ease: "easeOut" }
@@ -116,7 +116,7 @@ const DualModeSection = () => {
 
         setTransitionData({
             title: nextMode === 'TRADER' ? "TRADER MINDSET" : "INVESTOR MINDSET",
-            desc: nextMode === 'TRADER' ? "High Velocity â€¢ Precision â€¢ Active" : "Long Term â€¢ Balanced â€¢ Strategic",
+            desc: nextMode === 'TRADER' ? "High Velocity • Precision • Active" : "Long Term • Balanced • Strategic",
             bgLeft: nextMode === 'TRADER' ? content.TRADER.theme.bg : content.INVESTOR.theme.bg,
             bgRight: nextMode === 'TRADER' ? content.TRADER.theme.surface : content.INVESTOR.theme.surface,
             glow: nextMode === 'TRADER' ? content.TRADER.theme.glow : content.INVESTOR.theme.glow,

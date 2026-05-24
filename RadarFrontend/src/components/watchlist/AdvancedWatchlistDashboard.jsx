@@ -372,7 +372,7 @@ export default function AdvancedWatchlistDashboard() {
                     onClick={() => setShowKeyboardHelp(false)}
                     className="text-slate-400 hover:text-white transition-colors"
                   >
-                    âœ•
+                    ✖
                   </button>
                 </div>
                 <div className="space-y-2">
@@ -553,7 +553,7 @@ export default function AdvancedWatchlistDashboard() {
                   >
                     {SORT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
-                        {option.icon} {option.label} {option.new ? 'âœ¨' : ''}
+                        {option.icon} {option.label} {option.new ? '✨' : ''}
                       </option>
                     ))}
                   </select>

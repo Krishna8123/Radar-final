@@ -28,7 +28,7 @@ const RealtimeWatchlist = ({ symbols = [], title = 'My Watchlist' }) => {
             <div className="bg-white p-6 rounded-lg shadow">
                 <h2 className="text-2xl font-bold mb-4">{title}</h2>
                 <div className="bg-red-50 border border-red-200 p-4 rounded">
-                    <p className="text-red-700">âŒ {error}</p>
+                    <p className="text-red-700">❌ {error}</p>
                     <button
                         onClick={refetch}
                         className="mt-2 text-red-600 underline text-sm"
@@ -106,15 +106,15 @@ const RealtimeWatchlist = ({ symbols = [], title = 'My Watchlist' }) => {
                                         <div>
                                             <p className="font-semibold">{symbol}</p>
                                             {quote.stale && (
-                                                <span className="text-xs text-yellow-600">âš ï¸ Stale</span>
+                                                <span className="text-xs text-yellow-600">⚠️ï¸ Stale</span>
                                             )}
                                         </div>
                                     </td>
                                     <td className="text-right py-3 px-4 font-semibold">
-                                        ₹{quote.price?.toFixed(2) || 'â€”'}
+                                        ₹{quote.price?.toFixed(2) || '—'}
                                     </td>
                                     <td className={`text-right py-3 px-4 font-semibold ${changeColor}`}>
-                                        {isPositive ? 'â–²' : 'â–¼'} {Math.abs(quote.change)?.toFixed(2) || 0}
+                                        {isPositive ? '▲' : '▼'} {Math.abs(quote.change)?.toFixed(2) || 0}
                                     </td>
                                     <td className="text-right py-3 px-4">
                                         <span className={`${bgColor} ${changeColor} px-2 py-1 rounded font-semibold`}>
@@ -122,7 +122,7 @@ const RealtimeWatchlist = ({ symbols = [], title = 'My Watchlist' }) => {
                                         </span>
                                     </td>
                                     <td className="text-right py-3 px-4 text-sm text-gray-600">
-                                        {quote.volume?.toLocaleString() || 'â€”'}
+                                        {quote.volume?.toLocaleString() || '—'}
                                     </td>
                                     <td className="text-center py-3 px-4">
                                         <span className="text-xs bg-gray-100 px-2 py-1 rounded">

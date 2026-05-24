@@ -54,7 +54,7 @@ const clearAuthAndRedirect = () => {
     AUTH_KEYS.forEach(k => localStorage.removeItem(k));
     // Only redirect if not already on an auth page
     if (typeof window !== 'undefined') {
-        const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password'];
+        const publicPaths = ['/login', '/register'];
         const isPublicPath = publicPaths.some(p => window.location.pathname.startsWith(p));
         if (!isPublicPath) {
             window.location.href = '/login';

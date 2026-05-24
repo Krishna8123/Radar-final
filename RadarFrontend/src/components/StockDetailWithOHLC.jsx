@@ -48,7 +48,7 @@ const StockChartWithOHLC = ({ symbol, chartType = 'line' }) => {
                 <div className="flex items-center gap-2">
                     {isCached && (
                         <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
-                            âš¡ Fast (Cached)
+                            ⚡ Fast (Cached)
                         </span>
                     )}
                     <span className="text-sm text-gray-500">
@@ -139,7 +139,7 @@ const LatestPriceCard = ({ symbol }) => {
             <div className="text-sm text-gray-500 mb-1">{symbol}</div>
             <div className="text-2xl font-bold mb-2">₹{data.close.toFixed(2)}</div>
             <div className={`flex items-center gap-2 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                <span>{isPositive ? 'â–²' : 'â–¼'}</span>
+                <span>{isPositive ? '▲' : '▼'}</span>
                 <span>{Math.abs(priceChange).toFixed(2)}</span>
                 <span>({priceChangePercent}%)</span>
             </div>

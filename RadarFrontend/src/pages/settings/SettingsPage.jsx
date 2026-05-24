@@ -1,41 +1,128 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
-import { ArrowLeft, CheckCircle2, AlertTriangle, Save, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, Save, RotateCcw, Camera, Edit2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SettingsContext } from '../../context/SettingsContext';
+import { fetchUserProfile, updateUserProfile } from '../../api/userApi';
 import api from '../../api/api';
 import './SettingsPage.css';
+
+const resizeProfileImage = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onerror = () => reject(new Error('Unable to read profile picture'));
+  reader.onload = () => {
+    const image = new Image();
+    image.onerror = () => reject(new Error('Unable to process profile picture'));
+    image.onload = () => {
+      const maxSize = 360;
+      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.78));
+    };
+    image.src = String(reader.result || '');
+  };
+  reader.readAsDataURL(file);
+});
+
 
 const SettingsPage = ({ embedded = false } = {}) => {
   const navigate = useNavigate();
   const { settings: ctxSettings, saveSettings: saveToServer } = useContext(SettingsContext);
   const toastTimerRef = useRef(null);
 
-  // Left Card State: Terminal & Market
-  const [terminal, setTerminal] = useState({
-    defaultLandingPage: 'Dashboard',
-    defaultChartTimeframe: '5m',
-    defaultChartType: 'Candlestick',
-  });
+  // Profile Settings State
+  const fileRef = useRef(null);
+  const [profile, setProfile] = useState(null);
+  const [profileDraft, setProfileDraft] = useState({ username: '', email: '', address: '', profilePicture: '' });
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
 
-  const [marketDisplay, setMarketDisplay] = useState({
-    defaultMarket: 'NSE',
-    currencyFormat: 'INR',
-    theme: 'Dark',
-    showMarketStatusBadge: true,
-  });
+  const initial = useMemo(() => {
+    const source = profile?.username || profile?.email || 'R';
+    return source.trim().charAt(0).toUpperCase() || 'R';
+  }, [profile]);
 
-  // Right Card State: Alerts & Security
-  const [alerts, setAlerts] = useState({
-    priceAlerts: true,
-    technicalSignals: true, // Breakout Alerts
-    volumeSpikes: true,     // RSI Alerts
-    marketNewsAlerts: true, // News Alerts
-  });
+  const loadProfile = async () => {
+    try {
+      const res = await fetchUserProfile();
+      const profileData = res?.data?.data ?? res?.data ?? res ?? {};
+      setProfile(profileData);
+      setProfileDraft({
+        username: profileData.username || '',
+        email: profileData.email || '',
+        address: profileData.address || '',
+        profilePicture: profileData.profilePicture || '',
+      });
+    } catch (err) {
+      console.error('Failed to load profile in settings:', err);
+    }
+  };
 
-  const [security, setSecurity] = useState({
-    twoFactorAuth: false,
-  });
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const handleProfileDraftChange = (event) => {
+    const { name, value } = event.target;
+    setProfileDraft((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleProfilePhotoPick = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setProfileError('');
+    try {
+      const resized = await resizeProfileImage(file);
+      setProfileDraft((prev) => ({ ...prev, profilePicture: resized }));
+      setProfileEditing(true);
+    } catch (err) {
+      setProfileError(err.message || 'Unable to use this profile picture');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleProfileSave = async () => {
+    setProfileSaving(true);
+    setProfileError('');
+    try {
+      const updated = await updateUserProfile(profileDraft);
+      const nextProfile = { ...profile, ...updated };
+      setProfile(nextProfile);
+      setProfileDraft({
+        username: nextProfile.username || '',
+        email: nextProfile.email || '',
+        address: nextProfile.address || '',
+        profilePicture: nextProfile.profilePicture || '',
+      });
+      window.dispatchEvent(new CustomEvent('radar:profile-updated', { detail: nextProfile }));
+      setProfileEditing(false);
+      showToast('success', 'Profile updated successfully.');
+    } catch (err) {
+      setProfileError(err?.response?.data?.error || err?.response?.data?.message || err.message || 'Failed to save profile');
+      showToast('error', 'Failed to update profile.');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleProfileCancel = () => {
+    setProfileDraft({
+      username: profile?.username || '',
+      email: profile?.email || '',
+      address: profile?.address || '',
+      profilePicture: profile?.profilePicture || '',
+    });
+    setProfileEditing(false);
+    setProfileError('');
+  };
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -43,7 +130,7 @@ const SettingsPage = ({ embedded = false } = {}) => {
     confirmPassword: '',
   });
 
-  const [savingAll, setSavingAll] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -57,158 +144,37 @@ const SettingsPage = ({ embedded = false } = {}) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
 
-  // Sync state with settings context
-  useEffect(() => {
-    if (!ctxSettings) return;
-    setTerminal({
-      defaultLandingPage: ctxSettings.terminal?.defaultLandingPage || 'Dashboard',
-      defaultChartTimeframe: ctxSettings.terminal?.defaultChartTimeframe || '5m',
-      defaultChartType: ctxSettings.terminal?.defaultChartType || 'Candlestick',
-    });
-    setMarketDisplay({
-      defaultMarket: ctxSettings.marketDisplay?.defaultMarket || 'NSE',
-      currencyFormat: ctxSettings.marketDisplay?.currencyFormat || 'INR',
-      theme: ctxSettings.marketDisplay?.theme || 'Dark',
-      showMarketStatusBadge: ctxSettings.marketDisplay?.showMarketStatusBadge ?? true,
-    });
-    setAlerts({
-      priceAlerts: ctxSettings.alerts?.priceAlerts ?? true,
-      technicalSignals: ctxSettings.alerts?.technicalSignals ?? true,
-      volumeSpikes: ctxSettings.alerts?.volumeSpikes ?? true,
-      marketNewsAlerts: ctxSettings.alerts?.marketNewsAlerts ?? true,
-    });
-    setSecurity({
-      twoFactorAuth: ctxSettings.security?.twoFactorAuth ?? false,
-    });
-  }, [ctxSettings]);
-
   const handleBack = () => {
     navigate('/trader/dashboard');
   };
 
-  // Unified save handler
-  const handleSaveAll = async (e) => {
+  const handlePasswordChange = async (e) => {
     if (e) e.preventDefault();
-    setSavingAll(true);
+    setSavingPassword(true);
     try {
-      // 1. If password fields are typed, validate and update first
-      if (passwordForm.currentPassword || passwordForm.newPassword || passwordForm.confirmPassword) {
-        const { currentPassword, newPassword, confirmPassword } = passwordForm;
-        if (!currentPassword) {
-          showToast('error', 'Please enter your current password.');
-          setSavingAll(false);
-          return;
-        }
-        if (!newPassword || newPassword.length < 8) {
-          showToast('error', 'New password must be at least 8 characters.');
-          setSavingAll(false);
-          return;
-        }
-        if (newPassword !== confirmPassword) {
-          showToast('error', 'New passwords do not match.');
-          setSavingAll(false);
-          return;
-        }
-        await api.patch('/user/password', { currentPassword, newPassword });
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      const { currentPassword, newPassword, confirmPassword } = passwordForm;
+      if (!currentPassword) {
+        showToast('error', 'Please enter your current password.');
+        setSavingPassword(false);
+        return;
       }
-
-      // 2. Save preferences settings to DB (including syncing display parameters)
-      await saveToServer({
-        display: {
-          ...ctxSettings?.display,
-          chartType: terminal.defaultChartType.toLowerCase(),
-          defaultTimeframe: terminal.defaultChartTimeframe,
-          theme: marketDisplay.theme.toLowerCase(),
-        },
-        terminal: {
-          ...ctxSettings?.terminal,
-          ...terminal,
-        },
-        marketDisplay: {
-          ...ctxSettings?.marketDisplay,
-          ...marketDisplay,
-        },
-        alerts: {
-          ...ctxSettings?.alerts,
-          ...alerts,
-        },
-        security: {
-          ...ctxSettings?.security,
-          twoFactorAuth: security.twoFactorAuth,
-        }
-      });
-      showToast('success', 'Preferences saved successfully.');
-    } catch (err) {
-      showToast('error', err?.response?.data?.error || 'Failed to save settings.');
-    } finally {
-      setSavingAll(false);
-    }
-  };
-
-  // Reset to default presets
-  const handleResetDefaults = async () => {
-    setSavingAll(true);
-    const defaults = {
-      display: {
-        ...ctxSettings?.display,
-        chartType: 'candlestick',
-        defaultTimeframe: '5m',
-        theme: 'dark',
-      },
-      terminal: {
-        ...ctxSettings?.terminal,
-        defaultLandingPage: 'Dashboard',
-        defaultChartTimeframe: '5m',
-        defaultChartType: 'Candlestick',
-      },
-      marketDisplay: {
-        ...ctxSettings?.marketDisplay,
-        defaultMarket: 'NSE',
-        currencyFormat: 'INR',
-        theme: 'Dark',
-        showMarketStatusBadge: true,
-      },
-      alerts: {
-        ...ctxSettings?.alerts,
-        priceAlerts: true,
-        technicalSignals: true,
-        volumeSpikes: true,
-        marketNewsAlerts: true,
-      },
-      security: {
-        ...ctxSettings?.security,
-        twoFactorAuth: false,
+      if (!newPassword || newPassword.length < 8) {
+        showToast('error', 'New password must be at least 8 characters.');
+        setSavingPassword(false);
+        return;
       }
-    };
-
-    try {
-      await saveToServer(defaults);
-      setTerminal({
-        defaultLandingPage: 'Dashboard',
-        defaultChartTimeframe: '5m',
-        defaultChartType: 'Candlestick',
-      });
-      setMarketDisplay({
-        defaultMarket: 'NSE',
-        currencyFormat: 'INR',
-        theme: 'Dark',
-        showMarketStatusBadge: true,
-      });
-      setAlerts({
-        priceAlerts: true,
-        technicalSignals: true,
-        volumeSpikes: true,
-        marketNewsAlerts: true,
-      });
-      setSecurity({
-        twoFactorAuth: false,
-      });
-      showToast('success', 'Restored default settings.');
+      if (newPassword !== confirmPassword) {
+        showToast('error', 'New passwords do not match.');
+        setSavingPassword(false);
+        return;
+      }
+      await api.patch('/user/password', { currentPassword, newPassword });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      showToast('success', 'Password updated successfully.');
     } catch (err) {
-      showToast('error', err?.response?.data?.error || 'Failed to reset settings.');
+      showToast('error', err?.response?.data?.error || err?.response?.data?.message || 'Failed to update password.');
     } finally {
-      setSavingAll(false);
+      setSavingPassword(false);
     }
   };
 
@@ -224,26 +190,6 @@ const SettingsPage = ({ embedded = false } = {}) => {
       setLoggingOutAll(false);
     }
   };
-
-  const renderSwitch = (label, value, onChange) => (
-    <div className={`settings-switch-item ${value ? 'active' : ''}`} onClick={() => onChange(!value)}>
-      <span className="settings-switch-label">{label}</span>
-      <div className="settings-switch-track">
-        <div className="settings-switch-thumb" />
-      </div>
-    </div>
-  );
-
-  const renderDropdown = (label, value, options, onChange) => (
-    <div className="form-group">
-      <label className="form-label">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="form-select">
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-    </div>
-  );
 
   return (
     <div className="settings-page">
@@ -278,208 +224,141 @@ const SettingsPage = ({ embedded = false } = {}) => {
 
       {/* Container (Matching Help & Support Container) */}
       <div className="settings-container">
-        <form onSubmit={handleSaveAll}>
-          {/* Two-Column Grid */}
-          <div className="settings-main-content">
-            
-            {/* LEFT COLUMN: Terminal & Market */}
-            <div className="settings-column">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="settings-card"
-              >
-                <h3 className="settings-card-title">Terminal & Market</h3>
-                
-                {renderDropdown(
-                  'Default Landing Page',
-                  terminal.defaultLandingPage,
-                  [
-                    { value: 'Dashboard', label: 'Dashboard' },
-                    { value: 'Watchlist', label: 'Watchlist' },
-                    { value: 'Screener', label: 'Screener' },
-                    { value: 'News', label: 'News' }
-                  ],
-                  (v) => setTerminal(prev => ({ ...prev, defaultLandingPage: v }))
-                )}
+        {/* Profile Settings Card */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className="profile-hero-card"
+          style={{ marginBottom: '2rem' }}
+        >
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="profile-file-input"
+            onChange={handleProfilePhotoPick}
+          />
+          <button type="button" className="profile-photo" onClick={() => fileRef.current?.click()} aria-label="Change profile picture">
+            {profileDraft.profilePicture || profile?.profilePicture ? (
+              <img src={profileDraft.profilePicture || profile.profilePicture} alt="" />
+            ) : (
+              <span>{initial}</span>
+            )}
+            <span className="profile-camera"><Camera size={14} /></span>
+          </button>
 
-                {renderDropdown(
-                  'Default Chart Timeframe',
-                  terminal.defaultChartTimeframe,
-                  [
-                    { value: '1m', label: '1 Minute (1m)' },
-                    { value: '5m', label: '5 Minutes (5m)' },
-                    { value: '15m', label: '15 Minutes (15m)' },
-                    { value: '1H', label: '1 Hour (1H)' },
-                    { value: '1D', label: '1 Day (1D)' }
-                  ],
-                  (v) => setTerminal(prev => ({ ...prev, defaultChartTimeframe: v }))
-                )}
-
-                {renderDropdown(
-                  'Default Chart Type',
-                  terminal.defaultChartType,
-                  [
-                    { value: 'Candlestick', label: 'Candlestick' },
-                    { value: 'Line', label: 'Line' },
-                    { value: 'Area', label: 'Area' }
-                  ],
-                  (v) => setTerminal(prev => ({ ...prev, defaultChartType: v }))
-                )}
-
-                {renderDropdown(
-                  'Default Market',
-                  marketDisplay.defaultMarket,
-                  [
-                    { value: 'NSE', label: 'NSE (India)' },
-                    { value: 'BSE', label: 'BSE (India)' }
-                  ],
-                  (v) => setMarketDisplay(prev => ({ ...prev, defaultMarket: v }))
-                )}
-
-                {renderDropdown(
-                  'Currency Format',
-                  marketDisplay.currencyFormat,
-                  [
-                    { value: 'INR', label: 'INR (₹)' },
-                    { value: 'USD', label: 'USD ($)' }
-                  ],
-                  (v) => setMarketDisplay(prev => ({ ...prev, currencyFormat: v }))
-                )}
-
-                <div className="settings-switches-group">
-                  {renderSwitch(
-                    'Dark Mode',
-                    marketDisplay.theme === 'Dark',
-                    (isDark) => setMarketDisplay(prev => ({ ...prev, theme: isDark ? 'Dark' : 'Light' }))
-                  )}
-
-                  {renderSwitch(
-                    'Show Market Status Badge',
-                    marketDisplay.showMarketStatusBadge,
-                    (v) => setMarketDisplay(prev => ({ ...prev, showMarketStatusBadge: v }))
-                  )}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* RIGHT COLUMN: Alerts & Security */}
-            <div className="settings-column">
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="settings-card"
-              >
-                <h3 className="settings-card-title">Alerts & Security</h3>
-                
-                <div className="settings-switches-group">
-                  {renderSwitch(
-                    'Price Alerts',
-                    alerts.priceAlerts,
-                    (v) => setAlerts(prev => ({ ...prev, priceAlerts: v }))
-                  )}
-
-                  {renderSwitch(
-                    'Breakout Alerts',
-                    alerts.technicalSignals,
-                    (v) => setAlerts(prev => ({ ...prev, technicalSignals: v }))
-                  )}
-
-                  {renderSwitch(
-                    'RSI Alerts',
-                    alerts.volumeSpikes,
-                    (v) => setAlerts(prev => ({ ...prev, volumeSpikes: v }))
-                  )}
-
-                  {renderSwitch(
-                    'News Alerts',
-                    alerts.marketNewsAlerts,
-                    (v) => setAlerts(prev => ({ ...prev, marketNewsAlerts: v }))
-                  )}
-
-                  {renderSwitch(
-                    'Two Factor Authentication (2FA)',
-                    security.twoFactorAuth,
-                    (v) => setSecurity(prev => ({ ...prev, twoFactorAuth: v }))
-                  )}
-                </div>
-
-                <div className="settings-divider" />
-
-                {/* Change Password Section */}
-                <div className="settings-sub-section">
-                  <h4 className="settings-sub-title">Change Password</h4>
-                  
-                  <div className="form-group">
-                    <label className="form-label">Current Password</label>
-                    <input
-                      type="password"
-                      placeholder="Enter current password"
-                      value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                      autoComplete="current-password"
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">New Password</label>
-                    <input
-                      type="password"
-                      placeholder="Enter new password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                      autoComplete="new-password"
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Confirm Password</label>
-                    <input
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      autoComplete="new-password"
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="settings-divider" />
-
-                {/* Logout Trigger */}
-                <button
-                  type="button"
-                  onClick={handleLogoutAll}
-                  disabled={loggingOutAll}
-                  className="settings-logout-btn"
-                >
-                  {loggingOutAll ? 'Logging out...' : 'Logout All Devices'}
-                </button>
-              </motion.div>
-            </div>
-
+          <div className="profile-main-copy">
+            {profileEditing ? (
+              <div className="profile-edit-grid">
+                <input name="username" value={profileDraft.username} onChange={handleProfileDraftChange} placeholder="Name" />
+                <input name="email" value={profileDraft.email} onChange={handleProfileDraftChange} placeholder="Email" />
+                <input name="address" value={profileDraft.address} onChange={handleProfileDraftChange} placeholder="Address" />
+              </div>
+            ) : (
+              <>
+                <h1>{profile?.username || 'Radar User'}</h1>
+                <p>{profile?.email || 'account@radar.com'}</p>
+                <p className="profile-address">{profile?.address || 'Address not added yet'}</p>
+                <p className="profile-photo-help">Click the photo to add or change your profile picture.</p>
+              </>
+            )}
+            {profileError && <p style={{ color: '#f87171', fontSize: '13px', marginTop: '8px' }}>{profileError}</p>}
           </div>
 
-          {/* Centered Footer Submit Action */}
+          <div className="profile-actions">
+            <span className="profile-status-badge">Active</span>
+            {profileEditing ? (
+              <div className="profile-action-row">
+                <button type="button" className="profile-secondary-btn" onClick={handleProfileCancel} disabled={profileSaving}>
+                  <X size={16} /> Cancel
+                </button>
+                <button type="button" className="profile-primary-btn" onClick={handleProfileSave} disabled={profileSaving}>
+                  <Save size={16} /> {profileSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="profile-primary-btn" onClick={() => setProfileEditing(true)}>
+                <Edit2 size={16} /> Edit Profile
+              </button>
+            )}
+          </div>
+        </motion.section>
+
+        <form onSubmit={handlePasswordChange}>
+          {/* Security & Account Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="settings-actions-footer"
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="settings-card"
           >
-            <button type="submit" className="settings-submit-btn" disabled={savingAll}>
+            <h3 className="settings-card-title">Security & Account</h3>
+
+            {/* Change Password Section */}
+            <div className="settings-sub-section">
+              <h4 className="settings-sub-title">Change Password</h4>
+              
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter current password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  autoComplete="current-password"
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  autoComplete="new-password"
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  autoComplete="new-password"
+                  className="form-input"
+                  required
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="settings-submit-btn" style={{ marginTop: '1.5rem', width: 'fit-content' }} disabled={savingPassword}>
               <Save size={18} />
-              {savingAll ? 'Saving Settings...' : 'Save Settings'}
+              {savingPassword ? 'Updating Password...' : 'Update Password'}
             </button>
-            
-            <button type="button" onClick={handleResetDefaults} className="settings-reset-link" disabled={savingAll}>
-              Reset to Defaults
-            </button>
+
+            <div className="settings-divider" style={{ margin: '2rem 0' }} />
+
+            {/* Session Management */}
+            <div className="form-group">
+              <label className="form-label" style={{ marginBottom: '0.5rem' }}>Session Management</label>
+              <button
+                type="button"
+                onClick={handleLogoutAll}
+                disabled={loggingOutAll}
+                className="settings-logout-btn"
+                style={{ maxWidth: '320px' }}
+              >
+                {loggingOutAll ? 'Logging out...' : 'Logout All Devices'}
+              </button>
+            </div>
           </motion.div>
         </form>
       </div>

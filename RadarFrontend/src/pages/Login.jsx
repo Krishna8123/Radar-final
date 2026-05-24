@@ -124,10 +124,7 @@ export default function Login() {
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
-              </div>
-              <div className="flex justify-between items-center mt-2 px-4">
-                <a href="/forgot-password" className="text-sm text-[#10706B] hover:underline font-semibold">Forgot Password?</a>
-              </div>
+            </div>
             </div>
 
 

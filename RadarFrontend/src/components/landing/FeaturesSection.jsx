@@ -26,7 +26,7 @@ const InvestorModeSection = () => {
         {
             title: "Unified Markets",
             subtitle: "One view. Every asset.",
-            description: "Track stocks, crypto, and forex together â€” without switching tools or contexts.",
+            description: "Track stocks, crypto, and forex together — without switching tools or contexts.",
             icon: Globe,
             iconColor: "text-indigo-400",
             gradientFrom: "from-indigo-400",
@@ -56,7 +56,7 @@ const InvestorModeSection = () => {
         {
             title: "Paper Trading",
             subtitle: "Practice without pressure.",
-            description: "Test strategies, learn behavior, and build confidence â€” without risking capital.",
+            description: "Test strategies, learn behavior, and build confidence — without risking capital.",
             icon: FlaskConical,
             iconColor: "text-emerald-400",
             gradientFrom: "from-emerald-400",
@@ -71,7 +71,7 @@ const InvestorModeSection = () => {
         {
             title: "Learn & Grow",
             subtitle: "Clarity before complexity.",
-            description: "Investor-focused learning, fundamentals, and guided insights â€” built into the platform.",
+            description: "Investor-focused learning, fundamentals, and guided insights — built into the platform.",
             icon: GraduationCap,
             iconColor: "text-pink-400",
             gradientFrom: "from-pink-400",
@@ -109,7 +109,7 @@ const InvestorModeSection = () => {
                         More Ways Radar Helps You To <span className={`text-transparent bg-clip-text bg-gradient-to-r ${cards[activeIndex].gradientFrom} to-white transition-all duration-700`}>Stay Ahead</span>
                     </motion.h2>
                     <p className="text-base md:text-lg text-white/70 max-w-2xl mx-auto leading-normal mt-2">
-                        Radar is built as a system â€” each capability working together to support better decisions.
+                        Radar is built as a system — each capability working together to support better decisions.
                     </p>
                 </div>
 

@@ -35,9 +35,9 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await triggerManualUpdate();
-            setActionMessage(`âœ… Update triggered: ${result.message}`);
+            setActionMessage(`✅ Update triggered: ${result.message}`);
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -46,10 +46,10 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await startUpdateCron();
-            setActionMessage(`âœ… ${result.message}`);
+            setActionMessage(`✅ ${result.message}`);
             autoUpdate.refetch();
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -58,10 +58,10 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await stopUpdateCron();
-            setActionMessage(`âœ… ${result.message}`);
+            setActionMessage(`✅ ${result.message}`);
             autoUpdate.refetch();
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -70,10 +70,10 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await startSmartRefresh();
-            setActionMessage(`âœ… ${result.message}`);
+            setActionMessage(`✅ ${result.message}`);
             smartRefresh.refetch();
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -82,10 +82,10 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await stopSmartRefresh();
-            setActionMessage(`âœ… ${result.message}`);
+            setActionMessage(`✅ ${result.message}`);
             smartRefresh.refetch();
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -94,10 +94,10 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await clearCache();
-            setActionMessage(`âœ… ${result.message}`);
+            setActionMessage(`✅ ${result.message}`);
             cache.refetch();
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -106,10 +106,10 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await warmCache();
-            setActionMessage(`âœ… Cache warmed: ${result.warmed} symbols`);
+            setActionMessage(`✅ Cache warmed: ${result.warmed} symbols`);
             cache.refetch();
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -118,10 +118,10 @@ const AdminDashboard = () => {
         setActionLoading(true);
         try {
             const result = await forceOnline();
-            setActionMessage(`âœ… ${result.message}`);
+            setActionMessage(`✅ ${result.message}`);
             offline.refetch();
         } catch (error) {
-            setActionMessage(`âŒ Error: ${error.message}`);
+            setActionMessage(`❌ Error: ${error.message}`);
         }
         setActionLoading(false);
     };
@@ -136,12 +136,12 @@ const AdminDashboard = () => {
     };
 
     const healthLabels = {
-        healthy: 'âœ… All Systems Operational',
-        degraded: 'âš ï¸ Degraded Performance',
+        healthy: '✅ All Systems Operational',
+        degraded: '⚠️ï¸ Degraded Performance',
         critical: 'ðŸš¨ Critical Issues',
-        loading: 'â³ Loading...',
-        unknown: 'â“ Unknown',
-        error: 'âŒ System Error',
+        loading: '⏳ Loading...',
+        unknown: '❓ Unknown',
+        error: '❌ System Error',
     };
 
     return (
@@ -323,7 +323,7 @@ const AdminDashboard = () => {
                                 <p><strong>Last Failure:</strong> {offline.lastFailure || 'None'}</p>
                                 {!offline.isOnline && (
                                     <p className="text-red-600 font-semibold">
-                                        âš ï¸ System in offline mode - using cached data
+                                        ⚠️ï¸ System in offline mode - using cached data
                                     </p>
                                 )}
                             </div>
@@ -397,7 +397,7 @@ const AdminDashboard = () => {
                                 <p className="text-sm">Calls: {quoteStats.yahoo?.calls || 0}</p>
                                 <p className="text-sm">Success: {quoteStats.yahoo?.success || 0}</p>
                                 <p className="text-sm">Failed: {quoteStats.yahoo?.failed || 0}</p>
-                                <p className="text-sm">Limit: Unlimited â™¾ï¸</p>
+                                <p className="text-sm">Limit: Unlimited ♾️</p>
                             </div>
                         </div>
                     )}
