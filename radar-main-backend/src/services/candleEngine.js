@@ -185,12 +185,54 @@ const fetchYahooCandles = async (symbol, interval, range) => {
 
   logger.info(`[Candle Engine Yahoo] Querying Yahoo Finance for ${yahooSymbol} (options: ${JSON.stringify(queryOptions)})`);
   
-  const fetchPromise = yahooFinance.chart(yahooSymbol, queryOptions);
-  const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Yahoo Finance API timeout exceeded (6000ms)')), 6000)
-  );
+  let result;
+  try {
+    const fetchPromise = yahooFinance.chart(yahooSymbol, queryOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Yahoo Finance API timeout exceeded (6000ms)')), 6000)
+    );
+    result = await Promise.race([fetchPromise, timeoutPromise]);
+  } catch (err) {
+    logger.warn(`[Candle Engine] yahooFinance.chart failed for ${yahooSymbol}, trying direct v8 chart endpoint fallback: ${err.message}`);
+    try {
+      const intervalMap = { '1d': '1d', '1h': '1h', '15m': '15m' };
+      const response = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}`, {
+        params: {
+          period1: Math.floor(from.getTime() / 1000),
+          period2: Math.floor(to.getTime() / 1000),
+          interval: intervalMap[interval] || '1d',
+        },
+        timeout: 8000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json'
+        }
+      });
 
-  const result = await Promise.race([fetchPromise, timeoutPromise]);
+      const chartResult = response.data?.chart?.result?.[0];
+      if (!chartResult) {
+        throw new Error(`Direct v8 chart endpoint returned no data for ${yahooSymbol}`);
+      }
+
+      const timestamps = chartResult.timestamp || [];
+      const quote = chartResult.indicators?.quote?.[0] || {};
+      const adjclose = chartResult.indicators?.adjclose?.[0]?.adjclose || [];
+      
+      result = {
+        quotes: timestamps.map((ts, idx) => ({
+          date: new Date(ts * 1000),
+          open: quote.open?.[idx],
+          high: quote.high?.[idx],
+          low: quote.low?.[idx],
+          close: quote.close?.[idx],
+          adjclose: adjclose?.[idx],
+          volume: quote.volume?.[idx]
+        })).filter(q => q.open != null && q.high != null && q.low != null && q.close != null)
+      };
+    } catch (fallbackErr) {
+      throw new Error(`Yahoo Finance chart library and direct fallback both failed: ${fallbackErr.message}`);
+    }
+  }
   
   if (!result || !result.quotes || !Array.isArray(result.quotes) || result.quotes.length === 0) {
     throw new Error(`Yahoo Finance returned empty chart data for ${yahooSymbol}`);

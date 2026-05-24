@@ -502,6 +502,41 @@ const fetchYahooQuotes = async (symbols) => {
             }
         } catch (error) {
             console.error(`[stockService] Yahoo Finance quote chunk failed:`, error.message);
+            // Fallback: fetch quotes using direct v8 chart endpoint in parallel for this chunk
+            const fallbackPromises = chunk.map(async (symbol) => {
+                try {
+                    const res = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
+                        params: { range: '1d', interval: '1m' },
+                        timeout: 5000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const meta = res.data?.chart?.result?.[0]?.meta;
+                    if (meta) {
+                        return {
+                            symbol: symbol,
+                            longName: meta.longName || meta.shortName || symbol,
+                            shortName: meta.shortName || symbol,
+                            regularMarketPrice: meta.regularMarketPrice,
+                            regularMarketChangePercent: meta.previousClose > 0 ? ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100 : 0,
+                            regularMarketVolume: meta.regularMarketVolume || 0,
+                            regularMarketDayLow: meta.regularMarketDayLow || meta.regularMarketPrice,
+                            regularMarketDayHigh: meta.regularMarketDayHigh || meta.regularMarketPrice,
+                            marketCap: meta.marketCap || null,
+                            trailingPE: null,
+                            forwardPE: null,
+                            trailingAnnualDividendYield: null
+                        };
+                    }
+                } catch (fallbackErr) {
+                    // ignore individual failure
+                }
+                return null;
+            });
+            const fallbackResults = await Promise.all(fallbackPromises);
+            results.push(...fallbackResults.filter(Boolean));
         }
     }
     

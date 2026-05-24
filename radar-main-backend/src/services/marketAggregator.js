@@ -180,17 +180,57 @@ const fetchAlphaVantageCandles = async (symbol) => {
 // Fetch backup quotes using Yahoo Finance
 const fetchYahooQuoteOnly = async (symbol) => {
     const yahooSymbol = symbolAdapter.toYahoo(symbol);
-    const quote = await yahooFinance.quote(yahooSymbol);
-    if (!quote) {
-        throw new Error('Yahoo Finance returned no quote data');
+    try {
+        const quote = await yahooFinance.quote(yahooSymbol);
+        if (!quote) {
+            throw new Error('Yahoo Finance returned no quote data');
+        }
+        return {
+            price: quote.regularMarketPrice,
+            changePercent: quote.regularMarketChangePercent,
+            volume: quote.regularMarketVolume || 0,
+            high: quote.regularMarketDayHigh || quote.regularMarketPrice,
+            low: quote.regularMarketDayLow || quote.regularMarketPrice
+        };
+    } catch (err) {
+        logger.warn(`[Market Aggregator] yahooFinance.quote failed for ${yahooSymbol}, trying direct v8 chart endpoint fallback: ${err.message}`);
+        try {
+            const response = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}`, {
+                params: {
+                    range: '1d',
+                    interval: '1m',
+                },
+                timeout: 6000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/json'
+                }
+            });
+            
+            const result = response.data?.chart?.result?.[0];
+            if (!result || !result.meta) {
+                throw new Error(`Direct v8 chart endpoint returned no data for ${yahooSymbol}`);
+            }
+            
+            const meta = result.meta;
+            const prices = result.indicators?.quote?.[0]?.close || [];
+            const validPrices = prices.filter(p => p != null);
+            const currentPrice = validPrices.length > 0 ? validPrices[validPrices.length - 1] : meta.regularMarketPrice;
+            
+            const prevClose = meta.previousClose || currentPrice;
+            const changePercent = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
+            
+            return {
+                price: currentPrice,
+                changePercent: changePercent,
+                volume: meta.regularMarketVolume || 0,
+                high: meta.high || currentPrice,
+                low: meta.low || currentPrice
+            };
+        } catch (fallbackErr) {
+            throw new Error(`Yahoo Finance quote and direct fallback both failed: ${fallbackErr.message}`);
+        }
     }
-    return {
-        price: quote.regularMarketPrice,
-        changePercent: quote.regularMarketChangePercent,
-        volume: quote.regularMarketVolume || 0,
-        high: quote.regularMarketDayHigh || quote.regularMarketPrice,
-        low: quote.regularMarketDayLow || quote.regularMarketPrice
-    };
 };
 
 // Calculate indicators and signals
