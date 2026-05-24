@@ -319,7 +319,8 @@ const getUnifiedStockData = async (req, res) => {
                     industry: desc.industry || snap.industry || "General",
                     summary: desc.summary || "Profile summary is temporarily unavailable.",
                     website: desc.website || "",
-                    employees: Number(desc.employees || 0)
+                    employees: Number(desc.employees || 0),
+                    ceo: desc.ceo || null
                 };
                 
                 fundamentals = {
@@ -329,7 +330,8 @@ const getUnifiedStockData = async (req, res) => {
                     description: {
                         summary: companyProfile.summary,
                         website: companyProfile.website,
-                        employees: companyProfile.employees
+                        employees: companyProfile.employees,
+                        ceo: companyProfile.ceo
                     },
                     ratios: {
                         peRatio: snap.peRatio || snap.pe || null,

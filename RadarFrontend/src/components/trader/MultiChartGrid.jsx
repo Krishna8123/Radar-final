@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAsset } from "../../context/AssetContext";
 import { fetchOHLCData } from "../../api/ohlcApi";
 import { Settings, Maximize2 } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Tooltip, XAxis, YAxis, Area, Line, CartesianGrid } from "recharts";
+import { createChart, CrosshairMode, CandlestickSeries, HistogramSeries, LineSeries } from "lightweight-charts";
 
 const BACKEND_SYMBOL_MAP = {
   RELIANCE: "RELIANCE.NS",
@@ -179,6 +179,188 @@ const generateFallbackHistory = (symbol, timeframe) => {
   });
 };
 
+const LightweightGridChart = ({ data, activeIndicators, showGridLines }) => {
+  const chartContainerRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+  const seriesRef = useRef({});
+
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+
+    if (!chartInstanceRef.current) {
+      const chart = createChart(chartContainerRef.current, {
+        layout: {
+          background: { type: 'solid', color: 'transparent' },
+          textColor: 'rgba(255, 255, 255, 0.6)',
+        },
+        grid: {
+          vertLines: { color: showGridLines ? 'rgba(255, 255, 255, 0.05)' : 'transparent' },
+          horzLines: { color: showGridLines ? 'rgba(255, 255, 255, 0.05)' : 'transparent' },
+        },
+        crosshair: {
+          mode: CrosshairMode.Normal,
+          vertLine: { color: 'rgba(255, 255, 255, 0.2)', width: 1, style: 3 },
+          horzLine: { color: 'rgba(255, 255, 255, 0.2)', width: 1, style: 3 },
+        },
+        rightPriceScale: {
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          autoScale: true,
+        },
+        timeScale: {
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+      });
+
+      chartInstanceRef.current = chart;
+
+      const volumeSeries = chart.addSeries(HistogramSeries, {
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '', // overlay
+        scaleMargins: { top: 0.8, bottom: 0 },
+      });
+
+      const candleSeries = chart.addSeries(CandlestickSeries, {
+        upColor: '#22c55e',
+        downColor: '#ef4444',
+        borderVisible: false,
+        wickUpColor: '#22c55e',
+        wickDownColor: '#ef4444',
+      });
+
+      const ma7Series = chart.addSeries(LineSeries, { color: '#FFA500', lineWidth: 1.5, crosshairMarkerVisible: false });
+      const ma25Series = chart.addSeries(LineSeries, { color: '#FF1493', lineWidth: 1.5, crosshairMarkerVisible: false });
+      const vwapSeries = chart.addSeries(LineSeries, { color: '#60a5fa', lineWidth: 1.5, lineStyle: 2, crosshairMarkerVisible: false });
+      const bbUpperSeries = chart.addSeries(LineSeries, { color: '#a78bfa', lineWidth: 1, lineStyle: 3, crosshairMarkerVisible: false });
+      const bbLowerSeries = chart.addSeries(LineSeries, { color: '#a78bfa', lineWidth: 1, lineStyle: 3, crosshairMarkerVisible: false });
+
+      seriesRef.current = { candleSeries, volumeSeries, ma7Series, ma25Series, vwapSeries, bbUpperSeries, bbLowerSeries };
+      
+      const handleResize = () => {
+        if (chartContainerRef.current) {
+          chart.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+            height: chartContainerRef.current.clientHeight,
+          });
+        }
+      };
+      
+      window.addEventListener('resize', handleResize);
+      const resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(chartContainerRef.current);
+      
+      chartInstanceRef.current._cleanup = () => {
+        window.removeEventListener('resize', handleResize);
+        resizeObserver.disconnect();
+        try {
+          chart.remove();
+        } catch (e) {
+          // ignore if already disposed
+        }
+        chartInstanceRef.current = null;
+      };
+    }
+
+    const { candleSeries, volumeSeries, ma7Series, ma25Series, vwapSeries, bbUpperSeries, bbLowerSeries } = seriesRef.current;
+
+    ma7Series.applyOptions({ visible: activeIndicators.has('ma7') });
+    ma25Series.applyOptions({ visible: activeIndicators.has('ma25') });
+    vwapSeries.applyOptions({ visible: activeIndicators.has('vwap') });
+    bbUpperSeries.applyOptions({ visible: activeIndicators.has('bb') });
+    bbLowerSeries.applyOptions({ visible: activeIndicators.has('bb') });
+    chartInstanceRef.current.applyOptions({
+      grid: {
+        vertLines: { color: showGridLines ? 'rgba(255, 255, 255, 0.05)' : 'transparent' },
+        horzLines: { color: showGridLines ? 'rgba(255, 255, 255, 0.05)' : 'transparent' },
+      }
+    });
+
+    const cleanCandles = (data || [])
+      .map(c => ({
+        time: Math.floor(new Date(c.timestamp || c.datetime || c.date || Date.now()).getTime() / 1000),
+        open: Number(c.open),
+        high: Number(c.high),
+        low: Number(c.low),
+        close: Number(c.close),
+        volume: Number(c.volume || 0),
+        ma7: c.ma7,
+        ma25: c.ma25,
+        vwap: c.vwap,
+        bbUpper: c.bbUpper,
+        bbLower: c.bbLower,
+      }))
+      .filter(c =>
+        c &&
+        Number.isFinite(c.time) &&
+        Number.isFinite(c.open) &&
+        Number.isFinite(c.high) &&
+        Number.isFinite(c.low) &&
+        Number.isFinite(c.close) &&
+        c.open > 0 &&
+        c.high > 0 &&
+        c.low > 0 &&
+        c.close > 0 &&
+        c.high >= c.low
+      )
+      .sort((a, b) => a.time - b.time);
+
+    const uniqueCandles = [];
+    let lastTime = 0;
+    for (const c of cleanCandles) {
+      if (c.time > lastTime) {
+        uniqueCandles.push(c);
+        lastTime = c.time;
+      }
+    }
+
+    if (uniqueCandles.length > 0) {
+      candleSeries.setData(uniqueCandles);
+      volumeSeries.setData(uniqueCandles.map(c => ({
+        time: c.time,
+        value: c.volume,
+        color: c.close >= c.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+      })));
+
+      const getPoints = (key) => uniqueCandles.filter(c => Number.isFinite(c[key])).map(c => ({ time: c.time, value: c[key] }));
+      
+      const ma7Data = getPoints('ma7');
+      if (ma7Data.length > 0) ma7Series.setData(ma7Data);
+
+      const ma25Data = getPoints('ma25');
+      if (ma25Data.length > 0) ma25Series.setData(ma25Data);
+
+      const vwapData = getPoints('vwap');
+      if (vwapData.length > 0) vwapSeries.setData(vwapData);
+
+      const bbUpData = getPoints('bbUpper');
+      if (bbUpData.length > 0) bbUpperSeries.setData(bbUpData);
+
+      const bbLowData = getPoints('bbLower');
+      if (bbLowData.length > 0) bbLowerSeries.setData(bbLowData);
+
+      if (!chartInstanceRef.current._hasFitted) {
+        setTimeout(() => {
+            if (chartInstanceRef.current) chartInstanceRef.current.timeScale().fitContent();
+        }, 50);
+        chartInstanceRef.current._hasFitted = true;
+      }
+    }
+
+  }, [data, activeIndicators, showGridLines]);
+
+  useEffect(() => {
+    return () => {
+      if (chartInstanceRef.current && chartInstanceRef.current._cleanup) {
+        chartInstanceRef.current._cleanup();
+      }
+    };
+  }, []);
+
+  return <div ref={chartContainerRef} className="w-full h-full absolute inset-0" />;
+};
+
 const MultiChartGrid = ({ className, onOpenChart, timeframe = "15m", activeIndicators = new Set(), showGridLines = true, layout = "4-grid" }) => {
 
   const [histories, setHistories] = useState({});
@@ -201,8 +383,9 @@ const MultiChartGrid = ({ className, onOpenChart, timeframe = "15m", activeIndic
   const chartsToShowKey = chartsToShow.join(",");
 
   useEffect(() => {
-    const fetchAll = async () => {
-      setIsLoading(true);
+    let isMounted = true;
+    const fetchAll = async (silent = false) => {
+      if (!silent) setIsLoading(true);
       const symbols = [...new Set(chartsToShow)];
       const newHistories = {};
       await Promise.all(symbols.map(async (sym) => {
@@ -236,10 +419,22 @@ const MultiChartGrid = ({ className, onOpenChart, timeframe = "15m", activeIndic
           newHistories[sym] = generateFallbackHistory(sym, timeframe);
         }
       }));
-      setHistories(prev => ({ ...prev, ...newHistories }));
-      setIsLoading(false);
+      if (isMounted) {
+        setHistories(prev => ({ ...prev, ...newHistories }));
+        if (!silent) setIsLoading(false);
+      }
     };
-    fetchAll();
+    fetchAll(false);
+    
+    // Real-time polling
+    const intervalId = setInterval(() => {
+      fetchAll(true);
+    }, 10000); // Poll every 10 seconds
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [chartsToShowKey, timeframe]);
   const getLayoutClass = () => {
     switch (layout) {
@@ -347,73 +542,23 @@ const MultiChartGrid = ({ className, onOpenChart, timeframe = "15m", activeIndic
                   className="flex-1 min-h-0 w-full relative p-1 cursor-pointer"
                   onClick={() => onOpenChart?.(title)}
                 >
-                  {isLoading ? (
+                  {isLoading && chartData.length === 0 ? (
                     <div className="h-full w-full flex items-center justify-center text-[10px] text-[#5d606b] font-mono uppercase tracking-wider">
-                      Loading backend history...
+                      Loading market data...
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <AreaChart data={chartData}>
-                        <defs>
-                          <linearGradient id={`grad${i}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3db26b" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#3db26b" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#161c27",
-                            border: "1px solid #293839",
-                            fontSize: "10px",
-                            color: "#fff",
-                          }}
-                          itemStyle={{ color: "#fff" }}
-                          labelStyle={{ display: "none" }}
-                        />
-                        <XAxis dataKey="time" hide />
-                        <YAxis hide domain={["auto", "auto"]} />
-                        <Area
-                          type="monotone"
-                          dataKey="price"
-                          stroke="#3db26b"
-                          fill={`url(#grad${i})`}
-                          strokeWidth={1.5}
-                          isAnimationActive={false}
-                        />
-                        {activeIndicators.has('ma7') && (
-                          <Line type="monotone"
-                            data={chartData.map((d, idx) => ({ ...d, ma7: ma7[idx] }))}
-                            dataKey="ma7" stroke="#FFA500" strokeWidth={1} dot={false} isAnimationActive={false} />
-                        )}
-                        {activeIndicators.has('ma25') && (
-                          <Line type="monotone"
-                            data={chartData.map((d, idx) => ({ ...d, ma25: ma25[idx] }))}
-                            dataKey="ma25" stroke="#FF1493" strokeWidth={1} dot={false} isAnimationActive={false} />
-                        )}
-                        {activeIndicators.has('vwap') && (
-                          <Line type="monotone"
-                            data={chartData.map((d, idx) => ({ ...d, vwap: vwap[idx] }))}
-                            dataKey="vwap" stroke="#60a5fa" strokeWidth={1.2} dot={false} strokeDasharray="4 2" isAnimationActive={false} />
-                        )}
-                        {activeIndicators.has('bb') && (
-                          <>
-                            <Line type="monotone"
-                              data={chartData.map((d, idx) => ({ ...d, bbUpper: bb[idx]?.upper }))}
-                              dataKey="bbUpper" stroke="#a78bfa" strokeWidth={0.8} dot={false} strokeDasharray="2 3" isAnimationActive={false} />
-                            <Line type="monotone"
-                              data={chartData.map((d, idx) => ({ ...d, bbLower: bb[idx]?.lower }))}
-                              dataKey="bbLower" stroke="#a78bfa" strokeWidth={0.8} dot={false} strokeDasharray="2 3" isAnimationActive={false} />
-                          </>
-                        )}
-                        {showGridLines && (
-                          <CartesianGrid
-                            stroke="#293839"
-                            strokeDasharray="3 3"
-                            vertical={false}
-                          />
-                        )}
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    <LightweightGridChart
+                      data={chartData.map((d, idx) => ({
+                        ...d,
+                        ma7: ma7[idx],
+                        ma25: ma25[idx],
+                        vwap: vwap[idx],
+                        bbUpper: bb[idx]?.upper,
+                        bbLower: bb[idx]?.lower,
+                      }))}
+                      activeIndicators={activeIndicators}
+                      showGridLines={showGridLines}
+                    />
                   )}
                 </div>
               </div>

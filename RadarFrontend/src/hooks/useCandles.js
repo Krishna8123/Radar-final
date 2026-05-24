@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../api/api';
 
-const mapIntervalToPeriod = (interval) => {
+const mapIntervalToDaysAndInterval = (interval) => {
   const map = {
-    '1D': '1d',
-    '5D': '5d',
-    '1M': '1m',
-    '3M': '3m',
-    '6M': '6m',
-    '1Y': '1y',
-    '5Y': '5y'
+    '1D': { interval: '15m', daysBack: 5 },
+    '5D': { interval: '15m', daysBack: 10 },
+    '1M': { interval: '1d', daysBack: 60 },
+    '3M': { interval: '1d', daysBack: 90 },
+    '6M': { interval: '1d', daysBack: 180 },
+    '1Y': { interval: '1d', daysBack: 365 },
+    '5Y': { interval: '1wk', daysBack: 1825 }
   };
-  return map[String(interval).toUpperCase()] || '1y';
+  return map[String(interval).toUpperCase()] || { interval: '1d', daysBack: 365 };
 };
 
 export const useCandles = (symbol, interval = '1D') => {
@@ -24,16 +24,18 @@ export const useCandles = (symbol, interval = '1D') => {
     setLoading(true);
     setError(null);
     try {
-      const periodParam = mapIntervalToPeriod(interval);
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const res = await axios.get(`/api/charts/${encodeURIComponent(symbol)}`, {
-        params: { period: periodParam },
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const { interval: yahooInterval, daysBack } = mapIntervalToDaysAndInterval(interval);
+      const cleanSymbol = symbol.replace(/\.(NS|BO)$/i, '');
+      
+      const res = await api.get(`/ohlc/${encodeURIComponent(cleanSymbol)}/chart`, {
+        params: { interval: yahooInterval, daysBack },
         timeout: 12000,
       });
 
-      if (res && Array.isArray(res.data) && res.data.length > 0) {
-        const mapped = res.data.map(c => {
+      const rawData = res.data?.data || [];
+
+      if (rawData && Array.isArray(rawData) && rawData.length > 0) {
+        const mapped = rawData.map(c => {
           const t = Number(c.time || c.timestamp);
           let timeVal = isNaN(t) ? Math.floor(new Date(c.time || c.timestamp).getTime() / 1000) : t;
           if (timeVal > 9999999999) {

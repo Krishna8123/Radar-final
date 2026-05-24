@@ -185,7 +185,12 @@ const fetchYahooCandles = async (symbol, interval, range) => {
 
   logger.info(`[Candle Engine Yahoo] Querying Yahoo Finance for ${yahooSymbol} (options: ${JSON.stringify(queryOptions)})`);
   
-  const result = await yahooFinance.chart(yahooSymbol, queryOptions);
+  const fetchPromise = yahooFinance.chart(yahooSymbol, queryOptions);
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Yahoo Finance API timeout exceeded (6000ms)')), 6000)
+  );
+
+  const result = await Promise.race([fetchPromise, timeoutPromise]);
   
   if (!result || !result.quotes || !Array.isArray(result.quotes) || result.quotes.length === 0) {
     throw new Error(`Yahoo Finance returned empty chart data for ${yahooSymbol}`);

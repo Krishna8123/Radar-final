@@ -478,7 +478,9 @@ export default function Dashboard() {
       </AnimatePresence>
       {isTraderMode && (
         <>
-          <header className="navbar trader-glass-bar z-[100]" style={{ padding: '0 24px', display: 'flex', alignItems: 'center', height: '64px', width: '100%', borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(6,8,18,0.95)', backdropFilter: 'blur(20px)' }}>
+          <div style={{ padding: '12px 12px 0 12px', width: '100%', position: 'relative', zIndex: 9999 }}>
+            <header className="trader-glass-bar" style={{ padding: '0 24px', display: 'flex', alignItems: 'center', height: '64px', width: '100%', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(6,8,18,0.95)', backdropFilter: 'blur(20px)' }}>
+
 
             {/* LEFT: Logo + Nav Tabs together */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: 1 }}>
@@ -587,8 +589,8 @@ export default function Dashboard() {
 
                 {showTraderSearchDropdown && (
                   <div
-                    className="trader-search-dropdown absolute top-11 left-0 right-0 rounded-2xl shadow-xl overflow-hidden z-[9999]"
-                    style={{ background: '#020617', backgroundColor: '#020617', border: '1px solid rgba(34, 211, 238, 0.3)', backdropFilter: 'none' }}
+                    className="trader-search-dropdown absolute left-0 right-0 rounded-2xl shadow-xl overflow-hidden"
+                    style={{ top: 'calc(100% + 8px)', backgroundColor: 'rgba(2, 6, 23, 1)', border: '1px solid rgba(34, 211, 238, 0.3)', backdropFilter: 'none', zIndex: 999999 }}
                   >
                     {isTraderSearching && <div className="px-4 py-3 text-xs font-semibold text-[#9fb4c8]">Searching market...</div>}
                     {!isTraderSearching && traderSearchQuery.trim().length > 0 && traderSearchResults.length === 0 && <div className="px-4 py-3 text-xs font-semibold text-[#9fb4c8]">No matching assets found.</div>}
@@ -646,7 +648,17 @@ export default function Dashboard() {
                   onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 20px rgba(0,198,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,198,255,0.7)'; }}
                   onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px rgba(0,198,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(0,198,255,0.3)'; }}
                 >
-                  {userInitial}
+                  {(profile?.profilePicture || userImage) ? (
+                    <img 
+                      src={profile?.profilePicture || userImage} 
+                      alt="Profile" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                    />
+                  ) : null}
+                  <span style={{ display: (profile?.profilePicture || userImage) ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                    {userInitial}
+                  </span>
                 </div>
 
                 <ProfileDropdown
@@ -666,6 +678,7 @@ export default function Dashboard() {
             </div>
 
           </header>
+          </div>
         </>
       )}
 

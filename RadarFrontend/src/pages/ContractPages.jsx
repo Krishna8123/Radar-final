@@ -1103,6 +1103,29 @@ export function ReportsExportPage() {
     );
 }
 
+const resizeProfileImage = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Unable to read profile picture'));
+    reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error('Unable to process profile picture'));
+        image.onload = () => {
+            const maxSize = 360;
+            const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+            const width = Math.max(1, Math.round(image.width * scale));
+            const height = Math.max(1, Math.round(image.height * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.78));
+        };
+        image.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+});
+
 export function ProfilePage({ embedded = false } = {}) {
     const [profile, setProfile] = useState(null);
     const [portfolio, setPortfolio] = useState(null);
@@ -1401,10 +1424,16 @@ export function ProfilePage({ embedded = false } = {}) {
                     <div className="flex items-center gap-6">
                         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-blue-100 border-4 border-white overflow-hidden">
                             {profile?.profilePicture ? (
-                                <img src={profile.profilePicture} alt="Profile" className="w-full h-full object-cover" />
-                            ) : (
-                                initial
-                            )}
+                                <img 
+                                    src={profile.profilePicture} 
+                                    alt="Profile" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                />
+                            ) : null}
+                            <span style={{ display: profile?.profilePicture ? 'none' : 'flex' }}>
+                                {initial}
+                            </span>
                         </div>
                         <div className="user-meta">
                             <h1 className="text-3xl font-black text-slate-800 tracking-tight">{profile?.username}</h1>
@@ -2012,20 +2041,17 @@ export function SettingsPage() {
                             const formData = new FormData(e.target);
                             const username = formData.get('username')?.trim();
                             const email    = formData.get('email')?.trim();
+                            
+                            const payload = { username, email };
+                            if (selectedImage && selectedImage.startsWith('data:image')) {
+                                payload.profilePicture = selectedImage;
+                            }
+                            
                             try {
-                                const payload = { username, email };
-                                if (selectedImage) {
-                                    payload.profilePicture = selectedImage;
-                                }
                                 const res = await api.patch('/user/profile', payload);
                                 if (res.data?.success) {
                                     const updatedUser = res.data.data;
-                                    setProfile(prev => ({ 
-                                        ...prev, 
-                                        username: updatedUser.username, 
-                                        email: updatedUser.email,
-                                        profilePicture: updatedUser.profilePicture 
-                                    }));
+                                    setProfile(prev => ({ ...prev, ...updatedUser }));
                                     if (updatedUser.username) localStorage.setItem('username', updatedUser.username);
                                     if (updatedUser.email) localStorage.setItem('email', updatedUser.email);
                                     if (updatedUser.token) localStorage.setItem('token', updatedUser.token);
@@ -2035,6 +2061,7 @@ export function SettingsPage() {
                                         setSelectedImage(updatedUser.profilePicture);
                                     }
 
+                                    window.dispatchEvent(new CustomEvent('radar:profile-updated', { detail: updatedUser }));
                                     window.dispatchEvent(new Event('profile_updated'));
                                     setStatus('Changes Saved!');
                                     setTimeout(() => setStatus(''), 3000);
@@ -2050,25 +2077,32 @@ export function SettingsPage() {
                             {/* Avatar Initial Display */}
                             <div className="flex flex-col items-center gap-2">
                                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-black shadow-xl shadow-blue-100 border-4 border-white overflow-hidden">
-                                    {selectedImage ? (
-                                        <img src={selectedImage} alt="Profile" className="w-full h-full object-cover" />
-                                    ) : (
-                                        profile?.username?.charAt(0).toUpperCase() || 'U'
-                                    )}
+                                    {(selectedImage || profile?.profilePicture) ? (
+                                        <img 
+                                            src={selectedImage || profile?.profilePicture} 
+                                            alt="Profile" 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                        />
+                                    ) : null}
+                                    <span style={{ display: (selectedImage || profile?.profilePicture) ? 'none' : 'flex' }}>
+                                        {profile?.username?.charAt(0).toUpperCase() || 'U'}
+                                    </span>
                                 </div>
                                 <input 
                                     type="file" 
                                     ref={fileInputRef}
                                     className="hidden" 
                                     accept="image/png, image/jpeg"
-                                    onChange={(e) => {
+                                    onChange={async (e) => {
                                         const file = e.target.files[0];
                                         if (file) {
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => {
-                                                setSelectedImage(reader.result);
-                                            };
-                                            reader.readAsDataURL(file);
+                                            try {
+                                                const resizedImage = await resizeProfileImage(file);
+                                                setSelectedImage(resizedImage);
+                                            } catch (err) {
+                                                console.error("Failed to resize image", err);
+                                            }
                                         }
                                     }}
                                 />

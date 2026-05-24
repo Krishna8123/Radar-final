@@ -113,6 +113,7 @@ const buildFundamentalsResponse = (cleanSym, data, stockData) => {
             summary:  data.longBusinessSummary || null,
             employees: data.fullTimeEmployees || null,
             website:  data.website || null,
+            ceo:      data.ceo || null,
         },
         financialStatements: {
             incomeStatement: stockData?.financials?.income_statement || [],

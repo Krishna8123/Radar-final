@@ -34,26 +34,61 @@ const getChartData = async (
     const p1 = period1 ? new Date(Number(period1) * 1000) : new Date(Date.now() - effectiveDaysBack * 24 * 60 * 60 * 1000);
     const p2 = period2 ? new Date(Number(period2) * 1000) : new Date();
 
-    const result = await yahooFinance.chart(yahooSymbol, {
-        period1: p1,
-        period2: p2,
-        interval
-    });
+    let result;
+    try {
+        result = await yahooFinance.chart(yahooSymbol, {
+            period1: p1,
+            period2: p2,
+            interval
+        });
+    } catch (error) {
+        // Fallback for international symbols (e.g. WIT) where mapSymbol incorrectly appended .NS
+        if (yahooSymbol !== symbol && yahooSymbol.endsWith('.NS')) {
+            try {
+                result = await yahooFinance.chart(symbol, {
+                    period1: p1,
+                    period2: p2,
+                    interval
+                });
+            } catch (fallbackError) {
+                throw fallbackError;
+            }
+        } else {
+            throw error;
+        }
+    }
 
     if (!result?.quotes || result.quotes.length === 0) {
         return [];
     }
 
-    const mappedQuotes = result.quotes.map((candle) => ({
-        time: Math.floor(new Date(candle.date).getTime() / 1000) + (5.5 * 60 * 60),
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-        volume: candle.volume || 0,
-        // Store date string for grouping
-        dateStr: new Date(candle.date).toISOString().split('T')[0]
-    }));
+    const mappedQuotes = result.quotes
+        .filter(candle => 
+            candle && 
+            candle.open != null && 
+            candle.high != null && 
+            candle.low != null && 
+            candle.close != null &&
+            Number.isFinite(candle.open) && 
+            Number.isFinite(candle.high) && 
+            Number.isFinite(candle.low) && 
+            Number.isFinite(candle.close) &&
+            candle.open > 0 && 
+            candle.high > 0 && 
+            candle.low > 0 && 
+            candle.close > 0 &&
+            candle.high >= candle.low
+        )
+        .map((candle) => ({
+            time: Math.floor(new Date(candle.date).getTime() / 1000) + (5.5 * 60 * 60),
+            open: Number(candle.open),
+            high: Number(candle.high),
+            low: Number(candle.low),
+            close: Number(candle.close),
+            volume: Number(candle.volume) || 0,
+            // Store date string for grouping
+            dateStr: new Date(candle.date).toISOString().split('T')[0]
+        }));
 
     // If period1 was not provided, we fetched extra data to cover weekends.
     // Now we must filter down to the actual requested `daysBack` number of trading days.

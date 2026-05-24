@@ -21,27 +21,23 @@ import AdvancedTradingChart from './AdvancedTradingChart';
 
 const LAYOUTS = [
   { id: '1x1', label: '1 Chart', rows: 1, cols: 1, icon: '1x1' },
-  { id: '1x2', label: '1x2', rows: 1, cols: 2, icon: '1x2' },
-  { id: '2x1', label: '2x1', rows: 2, cols: 1, icon: '2x1' },
-  { id: '2x2', label: '2x2', rows: 2, cols: 2, icon: '2x2' },
-  { id: '1x3', label: '1x3', rows: 1, cols: 3, icon: '1x3' },
-  { id: '3x1', label: '3x1', rows: 3, cols: 1, icon: '3x1' },
-  { id: '2x3', label: '2x3', rows: 2, cols: 3, icon: '2x3' },
-  { id: '3x2', label: '3x2', rows: 3, cols: 2, icon: '3x2' },
-  { id: '3x3', label: '3x3', rows: 3, cols: 3, icon: '3x3' },
+  { id: '1x2', label: '2 Charts (H)', rows: 1, cols: 2, icon: '1x2' },
+  { id: '2x1', label: '2 Charts (V)', rows: 2, cols: 1, icon: '2x1' },
+  { id: '2x2', label: '4 Charts', rows: 2, cols: 2, icon: '2x2' },
+  { id: '1x3', label: '3 Charts', rows: 1, cols: 3, icon: '1x3' },
+  { id: '3x1', label: '3 Charts', rows: 3, cols: 1, icon: '3x1' },
+  { id: '3x3', label: '9 Charts', rows: 3, cols: 3, icon: '3x3' },
 ];
 
 // Initial placeholder — replaced with live API symbols after mount
-const PLACEHOLDER_SYMBOLS = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK'];
+const PLACEHOLDER_SYMBOLS = ['^NSEI', '^NSEBANK', 'RELIANCE.NS', 'HDFCBANK.NS'];
 
 const MultiChartWorkspace = () => {
-  const [layout, setLayout] = useState('2x2');
+  const [layout, setLayout] = useState('1x2');
   const [availableSymbols, setAvailableSymbols] = useState(PLACEHOLDER_SYMBOLS);
   const [charts, setCharts] = useState([
-    { id: 1, symbol: 'RELIANCE', timeframe: '15' },
-    { id: 2, symbol: 'TCS', timeframe: '15' },
-    { id: 3, symbol: 'INFY', timeframe: '15' },
-    { id: 4, symbol: 'HDFCBANK', timeframe: '15' },
+    { id: 1, symbol: '^NSEI', timeframe: '15' },
+    { id: 2, symbol: '^NSEBANK', timeframe: '15' },
   ]);
   const [fullscreenChart, setFullscreenChart] = useState(null);
   const [syncEnabled, setSyncEnabled] = useState(false);
@@ -149,22 +145,22 @@ const MultiChartWorkspace = () => {
   }, []);
 
   return (
-    <div className="h-full bg-slate-950 flex flex-col">
+    <div className="h-full bg-[#0a0e17] flex flex-col font-sans">
       {}
-      <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800">
+      <div className="flex items-center justify-between px-6 py-4 bg-[#0d131f]/80 backdrop-blur-md border-b border-cyan-900/30">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2 tracking-tight">
             <Monitor className="w-6 h-6 text-cyan-400" />
-            Multi-Chart Workspace
+            Terminal Workspace
           </h1>
           {syncEnabled && (
-            <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-semibold border border-cyan-400/30">
+            <span className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-semibold border border-cyan-400/20 shadow-[0_0_10px_rgba(34,211,238,0.2)]">
               Sync Enabled
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {}
           <div className="relative">
             <button
@@ -427,10 +423,10 @@ const MultiChartWorkspace = () => {
           {displayCharts.slice(0, totalCharts).map((chart, index) => (
             <motion.div
               key={chart.id}
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.05 }}
-              className="relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 group"
+              className="relative bg-[#0d131f]/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-cyan-900/20 group shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
             >
               {}
               <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

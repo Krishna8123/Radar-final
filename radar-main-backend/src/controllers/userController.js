@@ -99,9 +99,17 @@ const googleAuth = asyncHandler(async (req, res) => {
         let user = await User.findOne({ email });
 
         if (user) {
-            // Retroactively stamp authProvider for users created before this field existed
+            // Retroactively stamp authProvider and picture for users created before this field existed
+            let saveNeeded = false;
             if (!user.authProvider || user.authProvider === 'email') {
                 user.authProvider = 'google';
+                saveNeeded = true;
+            }
+            if (!user.profilePicture && picture) {
+                user.profilePicture = picture;
+                saveNeeded = true;
+            }
+            if (saveNeeded) {
                 await user.save();
             }
             res.json({
@@ -123,7 +131,8 @@ const googleAuth = asyncHandler(async (req, res) => {
                 username: name,
                 email: email,
                 password: randomPassword,
-                authProvider: 'google'
+                authProvider: 'google',
+                profilePicture: picture || ''
             });
 
             res.status(201).json({

@@ -166,16 +166,17 @@ const Header = ({ activeModule, setActiveModule, onToggleMode }) => {
     return (
         <>
             <header className="navbar rounded-[32px] mx-auto border border-white/40 shadow-xl relative z-[110] bg-white/95 backdrop-blur-xl px-10 py-3 flex items-center justify-between w-[96%] max-w-[1500px] mt-6">
-                {/* Left Side: Logo & Brand */}
-                <div className="flex items-center gap-2.5 shrink-0 cursor-pointer" onClick={() => navigate('/investor/dashboard')}>
-                    <img 
-                        src="/radar-icon.jpg" 
-                        alt="Radar Logo" 
-                        className="w-9 h-9 rounded-full object-cover"
-                    />
-                    <span className="text-xl font-black tracking-wider text-[#3E84F6]">
-                        RADAR
-                    </span>
+                <div className="flex items-center gap-3 shrink-0">
+                    <Link to="/" className="flex items-center gap-2.5" style={{ textDecoration: 'none' }}>
+                        <img
+                          src="/radar-icon.jpg"
+                          alt="Radar Logo"
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+                        <span className="text-xl font-black tracking-wider text-[#3E84F6]">
+                          RADAR
+                        </span>
+                    </Link>
                 </div>
 
                 <div className="flex items-center gap-8 ml-4">
@@ -288,22 +289,34 @@ const Header = ({ activeModule, setActiveModule, onToggleMode }) => {
                     <div className="flex items-center gap-2 border-l border-blue-100/30 pl-4">
                         <div className="relative">
                             <div onClick={() => setIsProfileOpen(!isProfileOpen)} className="w-9 h-9 rounded-full bg-[#3E84F6] text-white flex items-center justify-center text-xs font-black cursor-pointer hover:scale-110 transition-all shadow-lg shadow-blue-500/20 overflow-hidden">
-                                {userImage ? (
-                                    <img src={userImage} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    userInitial
-                                )}
+                                {(profile?.profilePicture || userImage) ? (
+                                    <img 
+                                        src={profile?.profilePicture || userImage} 
+                                        alt="Profile" 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                    />
+                                ) : null}
+                                <span style={{ display: (profile?.profilePicture || userImage) ? 'none' : 'flex' }}>
+                                    {userInitial}
+                                </span>
                             </div>
                             {isProfileOpen && (
                                 <div className="absolute right-0 top-12 w-[320px] bg-white border border-slate-100 rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.12)] overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2">
                                     {/* Header Section with Avatar */}
                                     <div className="px-6 py-5 bg-[#F8FAFF] flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/20 flex-shrink-0 overflow-hidden">
-                                        {userImage ? (
-                                            <img src={userImage} alt="Profile" className="w-full h-full object-cover" />
-                                        ) : (
-                                            userInitial
-                                        )}
+                                        {(profile?.profilePicture || userImage) ? (
+                                            <img 
+                                                src={profile?.profilePicture || userImage} 
+                                                alt="Profile" 
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                                            />
+                                        ) : null}
+                                        <span style={{ display: (profile?.profilePicture || userImage) ? 'none' : 'flex' }}>
+                                            {userInitial}
+                                        </span>
                                     </div>
                                         <div className="overflow-hidden">
                                             <p className="text-base font-black text-slate-900 leading-tight">{profile?.username || 'User'}</p>

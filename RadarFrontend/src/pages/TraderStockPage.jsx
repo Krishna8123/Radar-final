@@ -241,18 +241,18 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
         changeAmount,
         volume: dbQuote.volume != null && dbQuote.volume > 0 
           ? (isCryptoAsset ? `${Number(dbQuote.volume).toLocaleString()} ${am.currency}` : `${(Number(dbQuote.volume) / 1e6).toFixed(2)}M`) 
-          : '9.06M',
-        atr: tech.atr ? Number(tech.atr).toFixed(1) : '42.8',
+          : null,
+        atr: tech.atr ? Number(tech.atr).toFixed(1) : null,
         exchange: 'NSE',
       });
       
       setTechData({
-        rsi: tech.rsi || 52.4,
-        macd: tech.macd || { hist: 4.8, signal: 'Bullish Crossover' },
-        vwap: tech.vwap || price * 1.002,
-        atr: tech.atr || 42.8,
-        emas: tech.emas || { ema20: price * 0.995, ema50: price * 0.98, cross: 'Bullish' },
-        rvol: tech.rvol || 1.45,
+        rsi: tech.rsi || null,
+        macd: tech.macd || null,
+        vwap: tech.vwap || null,
+        atr: tech.atr || null,
+        emas: tech.emas || null,
+        rvol: tech.rvol || null,
       });
 
       setStockDetails({
@@ -262,23 +262,26 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
         high: highPrice,
         low: lowPrice,
         previousClose: prevClose,
-        peRatio: fundamentalsData.peRatio || dbQuote.peRatio || 24.5,
-        pbRatio: fundamentalsData.ratios?.pbRatio || 3.8,
-        evEbitda: fundamentalsData.ratios?.enterpriseValueToEbitda || 12.4,
-        roe: fundamentalsData.ratios?.roe || 18.2,
-        roa: fundamentalsData.ratios?.roa || 12.5,
-        profitMargins: fundamentalsData.ratios?.netProfitMargin || 15.6,
-        revenueGrowth: fundamentalsData.ratios?.revenueGrowth || 14.2,
-        debtToEquity: fundamentalsData.ratios?.debtToEquity || 0.35,
-        currentRatio: fundamentalsData.ratios?.currentRatio || 1.85,
-        sector: companyProfile.sector || 'Technology',
-        industry: companyProfile.industry || 'Software - Applications',
-        longBusinessSummary: companyProfile.summary || 'A high-performance market leader delivering core technology frameworks, enterprise SaaS architectures, and cloud optimization products worldwide.',
-        website: companyProfile.website || 'https://www.example.com',
-        avgVolume: dbQuote.volume || 1000000,
-        marketCap: dbQuote.marketCap || 15200000000000,
-        fiftyTwoWeekLow: dbQuote.fiftyTwoWeekLow || fundamentalsData.fiftyTwoWeekLow || price * 0.72,
-        fiftyTwoWeekHigh: dbQuote.fiftyTwoWeekHigh || fundamentalsData.fiftyTwoWeekHigh || price * 1.28
+        peRatio: fundamentalsData.peRatio || dbQuote.peRatio || null,
+        pbRatio: fundamentalsData.ratios?.pbRatio || null,
+        evEbitda: fundamentalsData.ratios?.enterpriseValueToEbitda || null,
+        roe: fundamentalsData.ratios?.roe || null,
+        roa: fundamentalsData.ratios?.roa || null,
+        profitMargins: fundamentalsData.ratios?.netProfitMargin || null,
+        revenueGrowth: fundamentalsData.ratios?.revenueGrowth || null,
+        debtToEquity: fundamentalsData.ratios?.debtToEquity || null,
+        currentRatio: fundamentalsData.ratios?.currentRatio || null,
+        sector: companyProfile.sector || 'Equity',
+        industry: companyProfile.industry || 'Software',
+        ceo: companyProfile.ceo || null,
+        fullTimeEmployees: companyProfile.employees ? companyProfile.employees.toLocaleString() : null,
+        founded: null, // Usually not provided by Yahoo Finance natively
+        longBusinessSummary: (companyProfile.summary && companyProfile.summary !== "Profile summary is temporarily unavailable.") ? companyProfile.summary : `${stock.name || 'This asset'} is listed on the ${assetMeta.exchange || 'National Stock Exchange of India (NSE)'}. It is widely tracked by institutional research terminals for volume breakouts, technical indicators, and derivatives flow.`,
+        website: companyProfile.website || 'https://www.bseindia.com',
+        avgVolume: dbQuote.volume || null,
+        marketCap: dbQuote.marketCap || null,
+        fiftyTwoWeekLow: dbQuote.fiftyTwoWeekLow || fundamentalsData.fiftyTwoWeekLow || null,
+        fiftyTwoWeekHigh: dbQuote.fiftyTwoWeekHigh || fundamentalsData.fiftyTwoWeekHigh || null
       });
 
       const logo = getLogoUrlForSymbol(symbol, companyProfile.website);
@@ -584,11 +587,11 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
           <div className="hidden xl:grid grid-cols-2 gap-x-4 gap-y-0.5 text-[9px] font-mono text-[#7c8db5] border-r border-white/10 pr-4 leading-none">
             <div className="flex items-center gap-1.5">
               <span className="opacity-50 uppercase">Vol:</span>
-              <span className="text-white font-bold">{(Number(stockDetails.volume || stock.volume || 1200000) / 1e6).toFixed(2)}M</span>
+              <span className="text-white font-bold">{(stockDetails.volume || stock.volume) ? (Number(stockDetails.volume || stock.volume) / 1e6).toFixed(2) + 'M' : '-'}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="opacity-50 uppercase">Mcap:</span>
-              <span className="text-white font-bold">₹{(Number(stockDetails.marketCap || 15200000000000) / 1e12).toFixed(2)}T</span>
+              <span className="text-white font-bold">{stockDetails.marketCap ? '₹' + (Number(stockDetails.marketCap) / 1e12).toFixed(2) + 'T' : '-'}</span>
             </div>
           </div>
 
@@ -848,94 +851,142 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                     
-                    {/* Subsection 1: Company Profile & Metrics */}
-                    <div className="bg-[#070b13]/50 border border-white/[0.06] rounded-xl p-5 space-y-4 shadow-sm backdrop-blur-sm">
+                    {/* Left side: Profile & Pivots */}
+                    <div className="space-y-5">
+                      {/* Subsection 1: Company Profile & Metrics */}
+                      <div className="bg-[#070b13]/50 border border-white/[0.06] rounded-xl p-5 space-y-4 shadow-sm backdrop-blur-sm">
                       <div className="flex items-center justify-between border-b border-white/[0.05] pb-2">
                         <h3 className="text-xs font-black tracking-widest text-[#7c8db5] uppercase">1. Company Profile & Metrics</h3>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-x-4 gap-y-3.5 text-xs font-mono">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4 text-xs font-mono">
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Sector</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Sector</span>
                           <span className="text-white font-bold truncate block">{stockDetails.sector || 'Equity'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Industry</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Industry</span>
                           <span className="text-white font-bold truncate block">{stockDetails.industry || 'N/A'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Exchange</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Exchange</span>
                           <span className="text-[#00ff9d] font-bold block">{stockDetails.exchange || 'NSE'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Market Cap</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Market Cap</span>
                           <span className="text-white font-bold block">₹{(Number(stockDetails.marketCap || 15200000000000) / 1e12).toFixed(2)}T</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">P/E Ratio</span>
-                          <span className="text-white font-bold block">{Number(stockDetails.peRatio || 24.5).toFixed(2)}</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">P/E Ratio</span>
+                          <span className="text-white font-bold block">{stockDetails.peRatio ? Number(stockDetails.peRatio).toFixed(2) : '-'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">P/B Ratio</span>
-                          <span className="text-white font-bold block">{Number(stockDetails.pbRatio || 3.8).toFixed(2)}</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">P/B Ratio</span>
+                          <span className="text-white font-bold block">{stockDetails.pbRatio ? Number(stockDetails.pbRatio).toFixed(2) : '-'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Beta (Volatility)</span>
-                          <span className="text-[#facc15] font-bold block">{Number(stockDetails.beta || 1.14).toFixed(2)}</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Beta (Volatility)</span>
+                          <span className="text-[#facc15] font-bold block">{stockDetails.beta ? Number(stockDetails.beta).toFixed(2) : '-'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">CEO</span>
-                          <span className="text-white font-bold truncate block">{stockDetails.ceo || 'Rajesh Gopinathan'}</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">CEO</span>
+                          <span className="text-white font-bold truncate block" title={stockDetails.ceo || 'N/A'}>{stockDetails.ceo || 'N/A'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Founded</span>
-                          <span className="text-white font-bold block">{stockDetails.founded || '1968'}</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Founded</span>
+                          <span className="text-white font-bold block">{stockDetails.founded || 'N/A'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Employees</span>
-                          <span className="text-white font-bold block">{stockDetails.fullTimeEmployees || '124,500'}</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Employees</span>
+                          <span className="text-white font-bold block">{stockDetails.fullTimeEmployees || 'N/A'}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Exchange Code</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Exchange Code</span>
                           <span className="text-white font-bold block uppercase">{stock.symbol}</span>
                         </div>
                         <div>
-                          <span className="text-[#7c8db5] block text-[9px] uppercase">Earnings Date</span>
-                          <span className="text-[#00d4ff] font-bold block">{stockDetails.nextEarningsDate || '12 Jul 2026'}</span>
+                          <span className="text-[#7c8db5] block text-[9px] uppercase mb-0.5">Earnings Date</span>
+                          <span className="text-[#00d4ff] font-bold block">{stockDetails.nextEarningsDate || 'Upcoming'}</span>
                         </div>
                       </div>
 
-                      <div className="space-y-1.5 pt-3 border-t border-white/[0.05]">
+                      <div className="space-y-1.5 pt-4 border-t border-white/[0.05]">
                         <span className="text-[9px] font-black tracking-widest text-[#7c8db5] uppercase block">About Company</span>
-                        <p className="text-xs text-[#7c8db5] leading-relaxed text-justify max-w-[98%]">
+                        <p className="text-[11px] text-[#7c8db5] leading-relaxed text-justify w-full pr-4">
                           {stockDetails.longBusinessSummary || stockDetails.description || `${stock.name || 'This asset'} is listed on the ${stockDetails.exchange || 'National Stock Exchange of India (NSE)'}. It is widely tracked by institutional research terminals for volume breakouts, technical indicators, and derivatives flow.`}
                         </p>
                       </div>
 
-                      <div className="space-y-2 pt-3 border-t border-white/[0.05]">
+                      <div className="space-y-2 pt-4 border-t border-white/[0.05]">
                         <span className="text-[9px] font-black tracking-widest text-[#7c8db5] uppercase block">Key Highlights</span>
-                        <div className="grid grid-cols-2 gap-2 text-[11px] text-[#7c8db5] font-mono">
-                          <div className="flex items-center gap-1.5 bg-[#070b13]/40 border border-white/[0.03] rounded px-2.5 py-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px] text-[#7c8db5] font-mono">
+                          <div className="flex items-center gap-1.5 bg-[#070b13]/60 border border-white/[0.05] shadow-inner rounded-md px-3 py-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] shadow-[0_0_5px_#00ff9d]" />
                             <span>ROE: <strong className="text-white">{stockDetails.roe || '18.2'}%</strong></span>
                           </div>
-                          <div className="flex items-center gap-1.5 bg-[#070b13]/40 border border-white/[0.03] rounded px-2.5 py-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
-                            <span>Profit Margin: <strong className="text-white">{stockDetails.profitMargins || '15.6'}%</strong></span>
+                          <div className="flex items-center gap-1.5 bg-[#070b13]/60 border border-white/[0.05] shadow-inner rounded-md px-3 py-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] shadow-[0_0_5px_#00ff9d]" />
+                            <span>Margin: <strong className="text-white">{stockDetails.profitMargins || '15.6'}%</strong></span>
                           </div>
-                          <div className="flex items-center gap-1.5 bg-[#070b13]/40 border border-white/[0.03] rounded px-2.5 py-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
-                            <span>Rev Growth: <strong className="text-white">{stockDetails.revenueGrowth || '14.2'}%</strong></span>
+                          <div className="flex items-center gap-1.5 bg-[#070b13]/60 border border-white/[0.05] shadow-inner rounded-md px-3 py-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] shadow-[0_0_5px_#00ff9d]" />
+                            <span>Growth: <strong className="text-white">{stockDetails.revenueGrowth || '14.2'}%</strong></span>
                           </div>
-                          <div className="flex items-center gap-1.5 bg-[#070b13]/40 border border-white/[0.03] rounded px-2.5 py-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
-                            <span>Debt/Equity: <strong className="text-white">{stockDetails.debtToEquity || '0.35'}</strong></span>
+                          <div className="flex items-center gap-1.5 bg-[#070b13]/60 border border-white/[0.05] shadow-inner rounded-md px-3 py-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff4d6d] shadow-[0_0_5px_#ff4d6d]" />
+                            <span>Debt/Eq: <strong className="text-white">{stockDetails.debtToEquity || '0.35'}</strong></span>
                           </div>
+                        </div>
+                      </div>
+                      </div>
+                      
+                      {/* Subsection 3: Price Structure & Pivots */}
+                      <div className="bg-[#070b13]/50 border border-white/[0.06] rounded-xl p-5 space-y-3 shadow-sm backdrop-blur-sm">
+                        <h3 className="text-xs font-black tracking-widest text-[#7c8db5] uppercase border-b border-white/[0.05] pb-1.5">3. Price Structure & Pivots</h3>
+                        
+                        <div className="grid grid-cols-3 gap-2.5 text-center text-xs font-mono">
+                          <div className="bg-[#ff4d6d]/5 border border-[#ff4d6d]/10 rounded-lg p-2">
+                            <span className="text-[#ff4d6d] text-[8px] uppercase block">Support 3</span>
+                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.s3 || (displayPrice * 0.965)).toFixed(1)}</span>
+                          </div>
+                          <div className="bg-[#ff4d6d]/5 border border-[#ff4d6d]/10 rounded-lg p-2">
+                            <span className="text-[#ff4d6d] text-[8px] uppercase block">Support 2</span>
+                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.s2 || (displayPrice * 0.98)).toFixed(1)}</span>
+                          </div>
+                          <div className="bg-[#ff4d6d]/5 border border-[#ff4d6d]/10 rounded-lg p-2">
+                            <span className="text-[#ff4d6d] text-[8px] uppercase block">Support 1</span>
+                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.s1 || (displayPrice * 0.99)).toFixed(1)}</span>
+                          </div>
+
+                          <div className="col-span-3 bg-white/[0.02] border border-white/[0.05] rounded-lg p-2">
+                            <span className="text-[#7c8db5] text-[9px] uppercase block">Pivot Point (PP)</span>
+                            <span className="text-[#00d4ff] font-extrabold text-[13px]">₹{Number(pivots?.pivotPoint || displayPrice).toFixed(1)}</span>
+                          </div>
+
+                          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 rounded-lg p-2">
+                            <span className="text-[#00ff9d] text-[8px] uppercase block">Resist 1</span>
+                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.r1 || (displayPrice * 1.01)).toFixed(1)}</span>
+                          </div>
+                          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 rounded-lg p-2">
+                            <span className="text-[#00ff9d] text-[8px] uppercase block">Resist 2</span>
+                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.r2 || (displayPrice * 1.02)).toFixed(1)}</span>
+                          </div>
+                          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 rounded-lg p-2">
+                            <span className="text-[#00ff9d] text-[8px] uppercase block">Resist 3</span>
+                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.r3 || (displayPrice * 1.035)).toFixed(1)}</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2.5 border-t border-white/[0.03] text-xs font-mono flex items-center justify-between">
+                          <span className="text-[#7c8db5] text-[9px] uppercase">VWAP Positioning:</span>
+                          <span className={`font-bold ${displayPrice > (techData?.vwap || displayPrice) ? 'text-[#00ff9d]' : 'text-[#ff4d6d]'}`}>
+                            ₹{Number(techData?.vwap || displayPrice * 1.002).toFixed(1)} ({displayPrice > (techData?.vwap || displayPrice) ? 'ABOVE ANCHOR' : 'BELOW ANCHOR'})
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Right side: Performance, Pivots, Volume & Flow */}
+                    {/* Right side: Performance, Volume & Flow */}
                     <div className="space-y-5">
                       
                       {/* Subsection 2: Performance & Range */}
@@ -982,51 +1033,6 @@ export default function TraderStockPage({ overrideSymbol, onBack }) {
                               ₹{techData?.atr || '42.8'}
                             </span>
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Subsection 3: Price Structure & Pivots */}
-                      <div className="bg-[#070b13]/50 border border-white/[0.06] rounded-xl p-5 space-y-3 shadow-sm backdrop-blur-sm">
-                        <h3 className="text-xs font-black tracking-widest text-[#7c8db5] uppercase border-b border-white/[0.05] pb-1.5">3. Price Structure & Pivots</h3>
-                        
-                        <div className="grid grid-cols-3 gap-2.5 text-center text-xs font-mono">
-                          <div className="bg-[#ff4d6d]/5 border border-[#ff4d6d]/10 rounded-lg p-2">
-                            <span className="text-[#ff4d6d] text-[8px] uppercase block">Support 3</span>
-                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.s3 || (displayPrice * 0.965)).toFixed(1)}</span>
-                          </div>
-                          <div className="bg-[#ff4d6d]/5 border border-[#ff4d6d]/10 rounded-lg p-2">
-                            <span className="text-[#ff4d6d] text-[8px] uppercase block">Support 2</span>
-                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.s2 || (displayPrice * 0.98)).toFixed(1)}</span>
-                          </div>
-                          <div className="bg-[#ff4d6d]/5 border border-[#ff4d6d]/10 rounded-lg p-2">
-                            <span className="text-[#ff4d6d] text-[8px] uppercase block">Support 1</span>
-                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.s1 || (displayPrice * 0.99)).toFixed(1)}</span>
-                          </div>
-
-                          <div className="col-span-3 bg-white/[0.02] border border-white/[0.05] rounded-lg p-2">
-                            <span className="text-[#7c8db5] text-[9px] uppercase block">Pivot Point (PP)</span>
-                            <span className="text-[#00d4ff] font-extrabold text-[13px]">₹{Number(pivots?.pivotPoint || displayPrice).toFixed(1)}</span>
-                          </div>
-
-                          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 rounded-lg p-2">
-                            <span className="text-[#00ff9d] text-[8px] uppercase block">Resist 1</span>
-                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.r1 || (displayPrice * 1.01)).toFixed(1)}</span>
-                          </div>
-                          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 rounded-lg p-2">
-                            <span className="text-[#00ff9d] text-[8px] uppercase block">Resist 2</span>
-                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.r2 || (displayPrice * 1.02)).toFixed(1)}</span>
-                          </div>
-                          <div className="bg-[#00ff9d]/5 border border-[#00ff9d]/10 rounded-lg p-2">
-                            <span className="text-[#00ff9d] text-[8px] uppercase block">Resist 3</span>
-                            <span className="text-white font-bold text-[11px]">₹{Number(pivots?.r3 || (displayPrice * 1.035)).toFixed(1)}</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-2.5 border-t border-white/[0.03] text-xs font-mono flex items-center justify-between">
-                          <span className="text-[#7c8db5] text-[9px] uppercase">VWAP Positioning:</span>
-                          <span className={`font-bold ${displayPrice > (techData?.vwap || displayPrice) ? 'text-[#00ff9d]' : 'text-[#ff4d6d]'}`}>
-                            ₹{Number(techData?.vwap || displayPrice * 1.002).toFixed(1)} ({displayPrice > (techData?.vwap || displayPrice) ? 'ABOVE ANCHOR' : 'BELOW ANCHOR'})
-                          </span>
                         </div>
                       </div>
 

@@ -249,13 +249,23 @@ const OverviewSection = ({
           </div>
           <div className="about-col-meta grid grid-cols-2 gap-x-8 gap-y-4 min-w-[240px]">
             {[
-              { label: 'Sector', val: quoteData?.sector || 'Equity' },
-              { label: 'Industry', val: quoteData?.industry || 'Services' },
-              { label: 'Last Update', val: new Date().toLocaleDateString() },
+              { label: 'Sector', val: stockDetails?.sector || quoteData?.sector || 'Equity', icon: Target },
+              { label: 'Industry', val: stockDetails?.industry || quoteData?.industry || 'Services', icon: Briefcase },
+              { label: 'CEO', val: stockDetails?.companyOfficers?.[0]?.name || stockDetails?.ceo || 'N/A', icon: Star },
+              { label: 'Employees', val: stockDetails?.fullTimeEmployees?.toLocaleString() || quoteData?.fullTimeEmployees?.toLocaleString() || 'N/A', icon: Users },
+              { label: 'Headquarters', val: stockDetails?.city ? `${stockDetails.city}, ${stockDetails.country || ''}` : 'N/A', icon: Building2 },
+              { label: 'Website', val: stockDetails?.website || quoteData?.website || 'N/A', isLink: true, icon: Globe },
             ].map((item, i) => (
-              <div key={i} className="meta-item">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">{item.label}</span>
-                <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>{item.val}</span>
+              <div key={i} className="meta-item flex flex-col">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <item.icon size={12} className="text-slate-400" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{item.label}</span>
+                </div>
+                {item.isLink && item.val !== 'N/A' ? (
+                  <a href={item.val.startsWith('http') ? item.val : `https://${item.val}`} target="_blank" rel="noreferrer" className={`text-xs font-black text-blue-500 hover:underline line-clamp-1`}>{item.val.replace(/^https?:\/\/(www\.)?/, '')}</a>
+                ) : (
+                  <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-800'} line-clamp-1`} title={item.val}>{item.val}</span>
+                )}
               </div>
             ))}
           </div>

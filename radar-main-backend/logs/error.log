@@ -1096,3 +1096,56 @@
 {"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 05:55:14"}
 {"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 05:55:22"}
 {"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 05:55:28"}
+{"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 18:55:10"}
+{"error":"Request failed with status code 429","level":"error","message":"News insight generation failed","service":"radar-backend","timestamp":"2026-05-24 18:57:40"}
+{"error":"Request failed with status code 429","level":"error","message":"News insight generation failed","service":"radar-backend","timestamp":"2026-05-24 18:57:40"}
+{"error":"Request failed with status code 429","level":"error","message":"News insight generation failed","service":"radar-backend","timestamp":"2026-05-24 18:57:40"}
+{"level":"error","message":"[Candle Engine] Provider yahoo reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 18:58:17"}
+{"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 18:58:18"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:30"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:30"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:34"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:34"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:41"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:41"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:42"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:42"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:43"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:58:43"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 18:59:19"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 18:59:19"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 18:59:20"}
+{"level":"error","message":"[Candle Engine] Provider yahoo reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 18:59:21"}
+{"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 18:59:21"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:59:21"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:59:21"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 18:59:22"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 18:59:24"}
+{"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 19:01:16"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 19:01:17"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 19:01:17"}
+{"level":"error","message":"[Candle Engine] Provider yahoo reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 19:01:18"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:01:18"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:01:18"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 19:01:18"}
+{"level":"error","message":"Live quotes unavailable for NIFTY.NS — using mock fallback data.","service":"radar-backend","timestamp":"2026-05-24 19:01:18"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:01:19"}
+{"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 19:03:09"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:09"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:09"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:10"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:10"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:11"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:16"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:16"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:17"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:17"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:19"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:03:19"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:04:56"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:04:56"}
+{"level":"error","message":"[Candle Engine] Provider alphavantage reached 3 consecutive failures. Cooldown activated for 1 minute.","service":"radar-backend","timestamp":"2026-05-24 19:04:56"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:04:58"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:04:58"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:04:59"}
+{"level":"error","message":"[stockService] candleEngine failed for NIFTY.NS: All candle aggregation providers failed for symbol: NIFTY.NS","service":"radar-backend","timestamp":"2026-05-24 19:04:59"}

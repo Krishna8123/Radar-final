@@ -54,6 +54,21 @@ const normalizeStockData = (quote, summary) => ({
   industry:
     summary?.assetProfile?.industry || '-',
 
+  website:
+    summary?.assetProfile?.website || '-',
+
+  fullTimeEmployees:
+    summary?.assetProfile?.fullTimeEmployees || null,
+
+  city:
+    summary?.assetProfile?.city || '',
+
+  country:
+    summary?.assetProfile?.country || '',
+
+  ceo:
+    summary?.assetProfile?.companyOfficers?.[0]?.name || '',
+
   description:
     summary?.assetProfile?.longBusinessSummary ||
     `${quote.symbol} is listed on the exchange.`,

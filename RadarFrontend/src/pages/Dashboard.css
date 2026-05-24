@@ -303,8 +303,8 @@ body {
 
 .dashboard-container.trader-theme .trader-glass-bar {
   background: rgba(22, 27, 38, 0.8) !important;
-  border: 1px solid #1F2937;
-  border-radius: 12px;
+  border-bottom: 1px solid #1F2937;
+  border-radius: 0;
 }
 
 .dashboard-container.trader-theme .nav-slogan {
@@ -2527,12 +2527,12 @@ body:has(.dashboard-container.trader-theme) #root {
 }
 
 .dashboard-container.trader-theme .trader-search-dropdown {
-  background: #020617 !important; /* solid fallback */
-  background: #020617 !important;
+  background: #0f172a !important;
   border: 1px solid rgba(34, 211, 238, 0.3) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  z-index: 9999 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 999999 !important;
+  opacity: 1 !important;
 }
 
 .dashboard-container.trader-theme .trader-profile-popover {

@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { fetchOHLCData } from '../../api/ohlcApi';
+import api from '../../api/api';
 
 
 
@@ -101,6 +102,9 @@ const AdvancedTradingChart = ({
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
+  const volumeSeriesRef = useRef(null);
+  const ma7SeriesRef = useRef(null);
+  const ma25SeriesRef = useRef(null);
   const indicatorSeriesRef = useRef({});
   
   const [timeframe, setTimeframe] = useState(initialTimeframe);
@@ -171,6 +175,22 @@ const AdvancedTradingChart = ({
 
     candleSeriesRef.current = candleSeries;
 
+    const volumeSeries = chart.addHistogramSeries({
+      color: '#26a69a',
+      priceFormat: { type: 'volume' },
+      priceScaleId: '', // set as an overlay
+    });
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.85, bottom: 0 },
+    });
+    volumeSeriesRef.current = volumeSeries;
+
+    const ma7Series = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1.5, title: 'MA 7' });
+    ma7SeriesRef.current = ma7Series;
+
+    const ma25Series = chart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, title: 'MA 25' });
+    ma25SeriesRef.current = ma25Series;
+
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
@@ -192,33 +212,96 @@ const AdvancedTradingChart = ({
       resizeObserver.disconnect();
       chart.remove();
     };
+  }, [symbol, timeframe, height, showHeader]);
+
+  const calculateSMA = useCallback((data, period) => {
+    const smaData = [];
+    for (let i = period - 1; i < data.length; i++) {
+      const sum = data.slice(i - period + 1, i + 1).reduce((acc, val) => acc + val.close, 0);
+      smaData.push({
+        time: data[i].time,
+        value: sum / period,
+      });
+    }
+    return smaData;
   }, []);
 
   const loadChartData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetchOHLCData(symbol, {
-        exchange: 'NSE',
-        timeframe: BACKEND_TIMEFRAME[timeframe] || '15m',
-        limit: 200
+      const cleanSymbol = symbol.replace(/\.(NS|BO)$/i, '');
+      
+      let yahooInterval = timeframe;
+      if (timeframe === '60') yahooInterval = '1h';
+      else if (timeframe === '240') yahooInterval = '1d';
+      else if (timeframe === 'D') yahooInterval = '1d';
+      else if (timeframe === 'W') yahooInterval = '1wk';
+      else if (timeframe === 'M') yahooInterval = '1mo';
+      else if (!['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo'].includes(yahooInterval)) {
+           yahooInterval = yahooInterval + 'm'; 
+      }
+
+      const response = await api.get(`/ohlc/${cleanSymbol}/chart`, {
+        params: { interval: yahooInterval, daysBack: 200 }
       });
       
-      const data = response.data.map(d => ({
-        time: Math.floor(new Date(d.timestamp || d.datetime || d.date).getTime() / 1000),
-        open: Number(d.open),
-        high: Number(d.high),
-        low: Number(d.low),
-        close: Number(d.close),
-      }))
-        .filter(d => Number.isFinite(d.time) && d.time > 0 && Number.isFinite(d.close))
+      const rawData = response.data?.data || [];
+      console.log("RAW API DATA", rawData);
+      
+      const candles = rawData
+        .map(d => ({
+          time: d.time ? Number(d.time) : Math.floor(new Date(d.timestamp || d.datetime || d.date).getTime() / 1000),
+          open: Number(d.open),
+          high: Number(d.high),
+          low: Number(d.low),
+          close: Number(d.close),
+          volume: Number(d.volume) || 0,
+        }))
         .sort((a, b) => a.time - b.time)
         .filter((d, index, rows) => index === 0 || d.time !== rows[index - 1].time);
-      
-      if (candleSeriesRef.current && data.length > 0) {
-        candleSeriesRef.current.setData(data);
 
-        const lastCandle = data[data.length - 1];
-        const firstCandle = data[0];
+      const cleanCandles = candles
+        .filter(c =>
+          c &&
+          Number.isFinite(c.open) &&
+          Number.isFinite(c.high) &&
+          Number.isFinite(c.low) &&
+          Number.isFinite(c.close) &&
+          c.open > 0 &&
+          c.high > 0 &&
+          c.low > 0 &&
+          c.close > 0 &&
+          c.high >= c.low
+        )
+        .map(c => ({
+          time: c.time,
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
+          volume: Number(c.volume) || 0,
+        }));
+        
+      console.log("CLEAN CANDLES", cleanCandles);
+      
+      if (candleSeriesRef.current && cleanCandles.length > 0) {
+        candleSeriesRef.current.setData(cleanCandles);
+
+        if (volumeSeriesRef.current) {
+          volumeSeriesRef.current.setData(
+            cleanCandles.map(d => ({
+              time: d.time,
+              value: d.volume,
+              color: d.close >= d.open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+            }))
+          );
+        }
+
+        if (ma7SeriesRef.current) ma7SeriesRef.current.setData(calculateSMA(cleanCandles, 7));
+        if (ma25SeriesRef.current) ma25SeriesRef.current.setData(calculateSMA(cleanCandles, 25));
+
+        const lastCandle = cleanCandles[cleanCandles.length - 1];
+        const firstCandle = cleanCandles[0];
         setCurrentPrice(lastCandle.close);
         setPriceChange({
           value: lastCandle.close - firstCandle.close,
@@ -241,7 +324,7 @@ const AdvancedTradingChart = ({
     } finally {
       setIsLoading(false);
     }
-  }, [symbol, timeframe, onChartReady]);
+  }, [symbol, timeframe, onChartReady, calculateSMA]);
 
   useEffect(() => {
     if (candleSeriesRef.current) {
@@ -251,17 +334,7 @@ const AdvancedTradingChart = ({
 
 
 
-  const calculateSMA = (data, period) => {
-    const smaData = [];
-    for (let i = period - 1; i < data.length; i++) {
-      const sum = data.slice(i - period + 1, i + 1).reduce((acc, val) => acc + val.close, 0);
-      smaData.push({
-        time: data[i].time,
-        value: sum / period,
-      });
-    }
-    return smaData;
-  };
+
 
   const addIndicator = useCallback((indicator) => {
     if (!chartRef.current) return;

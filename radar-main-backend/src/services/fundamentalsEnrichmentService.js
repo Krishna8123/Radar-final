@@ -136,6 +136,7 @@ async function fetchFromYahoo(yahooSym, changePercent = 0) {
         longBusinessSummary: ap.longBusinessSummary || null,
         fullTimeEmployees: ap.fullTimeEmployees || null,
         website:         ap.website  || null,
+        ceo:             ap.companyOfficers?.find(o => String(o.title || '').toLowerCase().includes('ceo') || String(o.title || '').toLowerCase().includes('chief executive'))?.name || null,
 
         valStatus:       classifyValuation(sd.trailingPE ?? ks.trailingPE),
         deliveryPct,
