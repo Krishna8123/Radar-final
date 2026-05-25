@@ -170,7 +170,7 @@ const getDefaultWatchlist = async (userId, mode = 'trader') => {
     }
     if (!watchlist && cleanMode === 'trader') {
         // Only allow fallback to general watchlists if mode is trader (to catch legacy records with null mode)
-        watchlist = await Watchlist.findOne({ userId });
+        watchlist = await Watchlist.findOne({ userId, mode: null });
     }
     if (!watchlist) {
         watchlist = new Watchlist({

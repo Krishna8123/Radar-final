@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { addSymbolToWatchlist, ensureWatchlist, removeSymbolFromWatchlist } from '../api/watchlistApi';
 import { enrichWatchlistSymbols } from '../components/trader/researchWatchlist/services/watchlistMarketService';
 import { normalizeSymbol, withNseSuffix } from '../components/trader/researchWatchlist/utils/formatters';
@@ -13,12 +14,20 @@ export const WatchlistProvider = ({ children }) => {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [watchlistId, setWatchlistId] = useState('');
+  const location = useLocation();
+
+  const currentMode = useMemo(() => {
+    const path = location.pathname.toLowerCase();
+    if (path.includes('/investor')) return 'investor';
+    if (path.includes('/trader')) return 'trader';
+    return String(localStorage.getItem('mode') || 'trader').toLowerCase();
+  }, [location.pathname]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const mode = String(localStorage.getItem('mode') || 'trader').toLowerCase();
+      const mode = currentMode;
       const targetName = mode === 'investor' ? 'Investor Portfolio' : 'Research Watchlist';
       const watchlist = await ensureWatchlist(mode, targetName);
       setWatchlistId(watchlist?._id || watchlist?.id || '');
@@ -64,7 +73,7 @@ export const WatchlistProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentMode]);
 
   useEffect(() => {
     load();
@@ -105,7 +114,7 @@ export const WatchlistProvider = ({ children }) => {
       return false;
     }
 
-    const mode = String(localStorage.getItem('mode') || 'trader').toLowerCase();
+    const mode = currentMode;
     const targetName = mode === 'investor' ? 'Investor Portfolio' : 'Research Watchlist';
     const watchlist = await ensureWatchlist(mode, targetName);
     const listId = watchlist?._id || watchlist?.id || '';
@@ -131,11 +140,11 @@ export const WatchlistProvider = ({ children }) => {
     } finally {
       setAdding(false);
     }
-  }, [load]);
+  }, [load, currentMode]);
 
   const removeSymbol = useCallback(async (symbol) => {
     try {
-      const mode = String(localStorage.getItem('mode') || 'trader').toLowerCase();
+      const mode = currentMode;
       const targetName = mode === 'investor' ? 'Investor Portfolio' : 'Research Watchlist';
       const watchlist = await ensureWatchlist(mode, targetName);
       const listId = watchlist?._id || watchlist?.id || '';
@@ -148,7 +157,7 @@ export const WatchlistProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to remove symbol:', err);
     }
-  }, [load]);
+  }, [load, currentMode]);
 
   const reorderSymbols = useCallback(async (symbols) => {
     try {

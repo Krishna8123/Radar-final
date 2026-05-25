@@ -165,8 +165,8 @@ function App() {
 
   return (
     <AssetProvider>
-      <WatchlistProvider>
-        <Router>
+      <Router>
+        <WatchlistProvider>
           <Suspense fallback={<AppLoader />}>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -247,8 +247,8 @@ function App() {
               <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>
           </Suspense>
-        </Router>
-      </WatchlistProvider>
+        </WatchlistProvider>
+      </Router>
     </AssetProvider>
   );
 }
