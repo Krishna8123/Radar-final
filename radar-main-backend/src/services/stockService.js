@@ -104,12 +104,14 @@ let quotesInFlightPromise = null;
 let lastKnownGoodQuotes = null;
 
 const providerState = {
-    yahoo: { blockedUntil: 0, lastError: null },
-    tiingo: { blockedUntil: 0, lastError: null },
-    finnhub: { blockedUntil: 0, lastError: null },
-    polygon: { blockedUntil: 0, lastError: null },
-    marketstack: { blockedUntil: 0, lastError: null },
-    stooq: { blockedUntil: 0, lastError: null },
+    yahoo: { blockedUntil: 0, lastError: null, failures: 0 },
+    tiingo: { blockedUntil: 0, lastError: null, failures: 0 },
+    finnhub: { blockedUntil: 0, lastError: null, failures: 0 },
+    twelvedata: { blockedUntil: 0, lastError: null, failures: 0 },
+    polygon: { blockedUntil: 0, lastError: null, failures: 0 },
+    alpha: { blockedUntil: 0, lastError: null, failures: 0 },
+    marketstack: { blockedUntil: 0, lastError: null, failures: 0 },
+    stooq: { blockedUntil: 0, lastError: null, failures: 0 },
 };
 const warningState = new Map();
 
@@ -117,7 +119,11 @@ const isProviderBlocked = (name) => Date.now() < (providerState[name]?.blockedUn
 
 const markProviderFailure = (name, errorMessage) => {
     if (!providerState[name]) return;
-    providerState[name].blockedUntil = Date.now() + PROVIDER_FAILURE_COOLDOWN_MS;
+    providerState[name].failures = (providerState[name].failures || 0) + 1;
+    if (providerState[name].failures >= 3) {
+        providerState[name].blockedUntil = Date.now() + PROVIDER_FAILURE_COOLDOWN_MS;
+        logger.warn(`[stockService] Provider ${name} reached 3 consecutive failures. Cooldown activated for 90s.`);
+    }
     providerState[name].lastError = errorMessage;
 };
 
@@ -125,6 +131,7 @@ const clearProviderFailure = (name) => {
     if (!providerState[name]) return;
     providerState[name].blockedUntil = 0;
     providerState[name].lastError = null;
+    providerState[name].failures = 0;
 };
 
 const pruneWarningState = (now) => {
@@ -502,41 +509,39 @@ const fetchYahooQuotes = async (symbols) => {
             }
         } catch (error) {
             console.error(`[stockService] Yahoo Finance quote chunk failed:`, error.message);
-            // Fallback: fetch quotes using direct v8 chart endpoint in parallel for this chunk
-            const fallbackPromises = chunk.map(async (symbol) => {
-                try {
-                    const res = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
-                        params: { range: '1d', interval: '1m' },
-                        timeout: 5000,
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                            'Accept': 'application/json'
-                        }
-                    });
-                    const meta = res.data?.chart?.result?.[0]?.meta;
-                    if (meta) {
-                        return {
-                            symbol: symbol,
-                            longName: meta.longName || meta.shortName || symbol,
-                            shortName: meta.shortName || symbol,
-                            regularMarketPrice: meta.regularMarketPrice,
-                            regularMarketChangePercent: meta.previousClose > 0 ? ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100 : 0,
-                            regularMarketVolume: meta.regularMarketVolume || 0,
-                            regularMarketDayLow: meta.regularMarketDayLow || meta.regularMarketPrice,
-                            regularMarketDayHigh: meta.regularMarketDayHigh || meta.regularMarketPrice,
-                            marketCap: meta.marketCap || null,
-                            trailingPE: null,
-                            forwardPE: null,
-                            trailingAnnualDividendYield: null
-                        };
+            // Fallback: fetch quotes using direct v7 quote endpoint in a single call for this chunk
+            try {
+                const fallbackUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${chunk.join(',')}`;
+                const res = await axios.get(fallbackUrl, {
+                    timeout: 6000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'application/json'
                     }
-                } catch (fallbackErr) {
-                    // ignore individual failure
+                });
+                const quoteResult = res.data?.quoteResponse?.result;
+                if (Array.isArray(quoteResult)) {
+                    const fallbackQuotes = quoteResult.map(meta => ({
+                        symbol: meta.symbol,
+                        longName: meta.longName || meta.shortName || meta.symbol,
+                        shortName: meta.shortName || meta.symbol,
+                        regularMarketPrice: meta.regularMarketPrice,
+                        regularMarketChangePercent: meta.regularMarketChangePercent || 0,
+                        regularMarketVolume: meta.regularMarketVolume || 0,
+                        averageDailyVolume3Month: meta.averageDailyVolume3Month,
+                        averageDailyVolume10Day: meta.averageDailyVolume10Day,
+                        regularMarketDayLow: meta.regularMarketDayLow || meta.regularMarketPrice,
+                        regularMarketDayHigh: meta.regularMarketDayHigh || meta.regularMarketPrice,
+                        marketCap: meta.marketCap || null,
+                        trailingPE: meta.trailingPE || null,
+                        forwardPE: meta.forwardPE || null,
+                        trailingAnnualDividendYield: meta.trailingAnnualDividendYield || null
+                    }));
+                    results.push(...fallbackQuotes);
                 }
-                return null;
-            });
-            const fallbackResults = await Promise.all(fallbackPromises);
-            results.push(...fallbackResults.filter(Boolean));
+            } catch (fallbackErr) {
+                console.error(`[stockService] Yahoo Finance quote fallback failed:`, fallbackErr.message);
+            }
         }
     }
     
@@ -550,6 +555,7 @@ const fetchYahooQuotes = async (symbols) => {
                 price: Number(item.regularMarketPrice) || 0,
                 change: Number(item.regularMarketChangePercent) || 0,
                 volume: Number(item.regularMarketVolume) || 0,
+                averageVolume: Number(item.averageDailyVolume3Month || item.averageDailyVolume10Day || item.averageVolume || 0) || 0,
                 dayLow: Number(item.regularMarketDayLow) || Number(item.regularMarketPrice) || 0,
                 dayHigh: Number(item.regularMarketDayHigh) || Number(item.regularMarketPrice) || 0,
                 type: 'STOCK',
@@ -1309,17 +1315,16 @@ const fetchStockData = async (customSymbols = null, options = {}) => {
 
             if (!hasEnoughLiveData(yahooQuotes, symbols.length)) {
                 try {
-
                     const existingSymbols = new Set(
                         yahooQuotes.map((item) =>
-                            String(item.symbol || '').toUpperCase()
+                            String(item.symbol || '').toUpperCase().replace(/\.(NS|BO)$/i, '')
                         )
                     );
 
                     const missingSymbols = symbols.filter(
                         (symbol) =>
                             !existingSymbols.has(
-                                String(symbol || '').toUpperCase()
+                                String(symbol || '').toUpperCase().replace(/\.(NS|BO)$/i, '')
                             )
                     );
 
@@ -1333,25 +1338,22 @@ const fetchStockData = async (customSymbols = null, options = {}) => {
                         ...yahooQuotes,
                         ...finnhubQuotes
                     ].filter((item, index, array) => {
-
                         const symbol = String(
                             item.symbol || ''
-                        ).toUpperCase();
+                        ).toUpperCase().replace(/\.(NS|BO)$/i, '');
 
                         return (
                             array.findIndex(
                                 (row) =>
                                     String(
                                         row.symbol || ''
-                                    ).toUpperCase() === symbol
+                                    ).toUpperCase().replace(/\.(NS|BO)$/i, '') === symbol
                             ) === index
                         );
                     });
 
                     yahooQuotes = mergedQuotes;
-
                 } catch (error) {
-
                     console.log(
                         "FINNHUB FALLBACK ERROR:",
                         error.message
@@ -1509,6 +1511,8 @@ const fetchStockData = async (customSymbols = null, options = {}) => {
 
         // Persist the fresh payload as last-known-good
         if (data) {
+            data = data.map(item => ({ ...item, isLive: true, priceSource: 'live' }));
+
             if (!customSymbols || !lastKnownGoodQuotes) {
                 lastKnownGoodQuotes = data;
             } else {
@@ -1532,15 +1536,15 @@ const fetchStockData = async (customSymbols = null, options = {}) => {
                     const customSet = new Set(customSymbols.map(s => String(s).toUpperCase()));
                     const filtered = lastKnownGoodQuotes.filter(q => customSet.has(String(q.symbol).toUpperCase()));
                     if (filtered.length > 0) {
-                        return filtered;
+                        return filtered.map(item => ({ ...item, isLive: false, priceSource: 'cached' }));
                     }
                     // If cache doesn't contain these symbols, fall through to mock fallback
                 } else {
-                    return lastKnownGoodQuotes;
+                    return lastKnownGoodQuotes.map(item => ({ ...item, isLive: false, priceSource: 'cached' }));
                 }
             }
             logger.error(`Live quotes unavailable for ${symbols.slice(0, 5).join(', ')}${symbols.length > 5 ? '...' : ''} — using mock fallback data.`);
-            return buildFallbackQuotes(symbols);
+            return buildFallbackQuotes(symbols).map(item => ({ ...item, isLive: false, priceSource: 'fallback' }));
         }
 
         if (!customSymbols) {

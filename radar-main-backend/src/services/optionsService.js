@@ -1,4 +1,6 @@
 const { fetchStockData } = require('./stockService');
+const YahooFinance = require('yahoo-finance2').default;
+const yahooFinance = new YahooFinance();
 
 const toNumber = (value, fallback = NaN) => {
     const parsed = Number(value);
@@ -69,14 +71,78 @@ const buildChain = (symbol, underlyingPrice, expiry = null) => {
 };
 
 const getOptionsChain = async (symbol, { expiry } = {}) => {
-    const underlying = await findUnderlying(symbol);
-    if (!underlying) {
-        const error = new Error(`Underlying ${normalizeSymbol(symbol)} not found`);
-        error.statusCode = 404;
-        throw error;
+    let yahooSymbol = symbol.toUpperCase().trim();
+    if (!yahooSymbol.includes('.') && !yahooSymbol.startsWith('^') && !yahooSymbol.endsWith('-USD')) {
+        yahooSymbol = `${yahooSymbol}.NS`;
     }
 
-    return buildChain(underlying.symbol, toNumber(underlying.price, 100), expiry);
+    try {
+        const queryOptions = {};
+        if (expiry) {
+            queryOptions.date = Math.floor(new Date(expiry).getTime() / 1000);
+        }
+        
+        const rawChain = await yahooFinance.options(yahooSymbol, queryOptions);
+        if (rawChain && rawChain.options && rawChain.options.length > 0) {
+            const optionData = rawChain.options[0];
+            const calls = (optionData.calls || []).map(c => {
+                let iv = c.impliedVolatility || 0;
+                if (iv > 0 && iv < 2.0) iv = iv * 100;
+                const premium = c.lastPrice || 0;
+                return {
+                    strike: c.strike,
+                    side: 'CALL',
+                    premium: Number(premium.toFixed(2)),
+                    iv: Number(iv.toFixed(2)),
+                    oi: c.openInterest || 0,
+                    volume: c.volume || 0,
+                    bid: c.bid != null ? Number(c.bid.toFixed(2)) : Number((premium * 0.99).toFixed(2)),
+                    ask: c.ask != null ? Number(c.ask.toFixed(2)) : Number((premium * 1.01).toFixed(2)),
+                };
+            });
+
+            const puts = (optionData.puts || []).map(p => {
+                let iv = p.impliedVolatility || 0;
+                if (iv > 0 && iv < 2.0) iv = iv * 100;
+                const premium = p.lastPrice || 0;
+                return {
+                    strike: p.strike,
+                    side: 'PUT',
+                    premium: Number(premium.toFixed(2)),
+                    iv: Number(iv.toFixed(2)),
+                    oi: p.openInterest || 0,
+                    volume: p.volume || 0,
+                    bid: p.bid != null ? Number(p.bid.toFixed(2)) : Number((premium * 0.99).toFixed(2)),
+                    ask: p.ask != null ? Number(p.ask.toFixed(2)) : Number((premium * 1.01).toFixed(2)),
+                };
+            });
+
+            const strikes = [...new Set([...calls.map(c => c.strike), ...puts.map(p => p.strike)])].sort((a, b) => a - b);
+
+            let underlyingPrice = 0;
+            if (rawChain.quote && rawChain.quote.regularMarketPrice) {
+                underlyingPrice = rawChain.quote.regularMarketPrice;
+            } else {
+                const underlying = await findUnderlying(symbol);
+                underlyingPrice = underlying ? toNumber(underlying.price, 100) : 100;
+            }
+
+            return {
+                symbol: normalizeSymbol(symbol),
+                underlyingPrice: Number(underlyingPrice.toFixed(2)),
+                expiry: optionData.expirationDate || expiry || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+                strikes,
+                calls,
+                puts,
+            };
+        }
+    } catch (err) {
+        console.warn(`[optionsService] Failed to fetch options from Yahoo Finance for ${yahooSymbol}, falling back to mock: ${err.message}`);
+    }
+
+    const underlying = await findUnderlying(symbol);
+    const price = underlying ? toNumber(underlying.price, 100) : 100;
+    return buildChain(symbol, price, expiry);
 };
 
 const computeGreeks = (chain) => {

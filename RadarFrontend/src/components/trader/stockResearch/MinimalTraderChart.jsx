@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { BarChart2, Activity, Settings2, Grid, TrendingUp, TrendingDown } from 'lucide-react';
 
-export default function MinimalTraderChart({ symbol, price, isPositive }) {
+export default function MinimalTraderChart({ symbol, price, isPositive, technicalSummary }) {
     const [timeframe, setTimeframe] = useState('1D');
     const [chartType, setChartType] = useState('candlestick');
     const [showIndicators, setShowIndicators] = useState(false);
+
+    const rsiVal = technicalSummary?.indicators?.rsi ?? null;
+    const rsi = rsiVal != null ? Number(rsiVal) : null;
+    const rsiLabel = rsi !== null
+        ? (rsi >= 70 ? 'Overbought' : rsi <= 30 ? 'Oversold' : 'Neutral')
+        : 'Unavailable';
+
+    const volStatusRaw = technicalSummary?.indicators?.volumeStatus || null;
+    const volumeStatus = volStatusRaw
+        ? (volStatusRaw === 'high_volume' ? 'High Volume' : volStatusRaw === 'above_average' ? 'Above Average' : volStatusRaw === 'average' ? 'Average' : volStatusRaw === 'below_average' ? 'Below Average' : volStatusRaw === 'low_volume' ? 'Low Volume' : volStatusRaw)
+        : 'Unavailable';
 
     return (
         <div className="flex flex-col flex-1 w-full gap-4">
@@ -108,23 +119,28 @@ export default function MinimalTraderChart({ symbol, price, isPositive }) {
                 <div className="bg-[#101828] border border-white/5 rounded-xl p-4 flex items-center justify-between">
                     <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">RSI (14)</div>
-                        <div className="text-sm font-black text-white">64.5 <span className="text-xs text-slate-500 font-semibold">(Neutral)</span></div>
+                        <div className="text-sm font-black text-white">
+                            {rsi !== null ? `${rsi.toFixed(1)} ` : ''}
+                            <span className="text-xs text-slate-500 font-semibold">({rsiLabel})</span>
+                        </div>
                     </div>
                     <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-cyan-400 w-[64.5%]"></div>
+                        <div className="h-full bg-cyan-400" style={{ width: rsi !== null ? `${rsi}%` : '0%' }}></div>
                     </div>
                 </div>
                 
                 <div className="bg-[#101828] border border-white/5 rounded-xl p-4 flex items-center justify-between">
                     <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Volume Status</div>
-                        <div className="text-sm font-black text-cyan-400">Above Average</div>
+                        <div className={`text-sm font-black ${volumeStatus === 'Unavailable' ? 'text-slate-500' : 'text-cyan-400'}`}>
+                            {volumeStatus}
+                        </div>
                     </div>
                     <div className="flex items-end gap-1 h-6">
                         <div className="w-1.5 h-3 bg-white/10 rounded-sm"></div>
                         <div className="w-1.5 h-4 bg-white/10 rounded-sm"></div>
-                        <div className="w-1.5 h-6 bg-cyan-500/50 rounded-sm"></div>
-                        <div className="w-1.5 h-5 bg-cyan-400 rounded-sm"></div>
+                        <div className={`w-1.5 h-6 rounded-sm ${volumeStatus === 'Unavailable' ? 'bg-white/10' : 'bg-cyan-500/50'}`}></div>
+                        <div className={`w-1.5 h-5 rounded-sm ${volumeStatus === 'Unavailable' ? 'bg-white/10' : 'bg-cyan-400'}`}></div>
                     </div>
                 </div>
             </div>

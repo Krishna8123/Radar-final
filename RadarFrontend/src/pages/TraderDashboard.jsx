@@ -2857,7 +2857,6 @@ function ResearchView({ activeModule, onRequestModuleChange }) {
                 <section className="tr-surface-card tr-panel-shell tr-panel-shell--chart">
                   <div className="workspace-header">
                     <div className="workspace-title">
-                      <span className="workspace-label">Multi-Chart Workspace</span>
                       <span className="workspace-symbol">
                         NIFTY 50{' '}
                         {niftyQuote ? (

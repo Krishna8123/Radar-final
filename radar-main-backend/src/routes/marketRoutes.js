@@ -78,8 +78,13 @@ const OHLC = require('../models/OHLC');
 
 async function getStockQuoteAndSparkline(sym) {
     let cleanSymbol = sym.trim().toUpperCase().replace(/^NSE:/i, '').replace(/\.(NS|BO)$/i, '');
-    let yahooSymbol = sym.trim().toUpperCase().replace(/^NSE:/i, '');
+    if (cleanSymbol === 'BITCOIN') {
+        cleanSymbol = 'BTC';
+    }
+    let yahooSymbol = cleanSymbol;
     let mongoSymbol = cleanSymbol;
+
+    const knownCryptos = ['BTC', 'ETH', 'SOL', 'ADA', 'XRP', 'DOGE', 'DOT', 'BNB', 'MATIC', 'AVAX', 'LINK', 'LTC', 'SHIB', 'TRX', 'NEAR', 'UNI', 'ATOM', 'FIL'];
 
     if (cleanSymbol === 'NIFTY' || cleanSymbol === 'NIFTY50' || cleanSymbol === '^NSEI' || cleanSymbol === 'NIFTY 50') {
         yahooSymbol = '^NSEI';
@@ -93,8 +98,14 @@ async function getStockQuoteAndSparkline(sym) {
         yahooSymbol = '^NSEBANK';
         mongoSymbol = 'BANKNIFTY';
         cleanSymbol = 'BANKNIFTY';
-    } else if (!yahooSymbol.includes('.') && !['BTC','ETH','SOL','XRP','BNB','ADA','DOT','DOGE','USDT'].some(c => cleanSymbol.includes(c))) {
+    } else if (knownCryptos.includes(cleanSymbol) || cleanSymbol.endsWith('-USD') || cleanSymbol.endsWith('USDT')) {
+        const crypto = cleanSymbol.replace(/USDT$/i, '').replace(/-USD$/i, '');
+        yahooSymbol = `${crypto}-USD`;
+        mongoSymbol = crypto;
+    } else if (!sym.trim().includes('.')) {
         yahooSymbol = cleanSymbol + '.NS';
+    } else {
+        yahooSymbol = sym.trim().toUpperCase().replace(/^NSE:/i, '');
     }
 
     let currentPrice = 0;

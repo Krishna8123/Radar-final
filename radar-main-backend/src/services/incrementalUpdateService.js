@@ -252,42 +252,27 @@ class IncrementalUpdateService {
         };
       }
 
-      const timestamps = validCandles.map(c => c.parsedDate);
-      const minDate = new Date(Math.min(...timestamps.map(t => t.getTime())));
-      const maxDate = new Date(Math.max(...timestamps.map(t => t.getTime())));
+      const targetExchange = symbol.toUpperCase().endsWith('.BO') ? 'BSE' : 
+                             (symbol.toUpperCase().endsWith('-USD') || ['BTC', 'ETH', 'SOL', 'ADA', 'XRP', 'DOGE', 'SOL-USD', 'BTC-USD', 'ETH-USD'].includes(symbol.toUpperCase()) ? 'CRYPTO' : 'NSE');
 
-      // Fetch existing candles in this range to avoid duplicates in timeseries
-      const existingDocs = await OHLC.find({
+      const formattedCandles = validCandles.map(c => ({
+        timestamp: c.parsedDate,
         symbol: cleanSym,
-        exchange: 'NSE',
+        exchange: targetExchange,
         timeframe,
-        timestamp: { $gte: minDate, $lte: maxDate }
-      }).select('timestamp').lean();
+        open: Number(c.open),
+        high: Number(c.high),
+        low: Number(c.low),
+        close: Number(c.close),
+        volume: Number(c.volume || 0),
+        source: 'yahoo'
+      }));
 
-      const existingTimes = new Set(existingDocs.map(d => new Date(d.timestamp).getTime()));
-      const newDocs = [];
+      const insertResult = await ohlcService.bulkInsertOHLC(formattedCandles);
+      const newCandlesSaved = insertResult.success ? insertResult.count : 0;
 
-      for (const c of validCandles) {
-        const tMs = c.parsedDate.getTime();
-        if (!existingTimes.has(tMs)) {
-          newDocs.push({
-            timestamp: c.parsedDate,
-            symbol: cleanSym,
-            exchange: 'NSE',
-            timeframe,
-            open: Number(c.open),
-            high: Number(c.high),
-            low: Number(c.low),
-            close: Number(c.close),
-            volume: Number(c.volume || 0),
-            source: 'yahoo',
-          });
-        }
-      }
-
-      if (newDocs.length > 0) {
-        await OHLC.insertMany(newDocs, { ordered: false });
-        logger.info(`Updated ${symbol}: Saved ${newDocs.length} new candles to DB`);
+      if (newCandlesSaved > 0) {
+        logger.info(`Updated ${symbol}: Saved ${newCandlesSaved} new candles to DB`);
       } else {
         logger.info(`Updated ${symbol}: No new candles needed`);
       }
@@ -295,7 +280,7 @@ class IncrementalUpdateService {
       return {
         symbol,
         success: true,
-        newCandles: newDocs.length,
+        newCandles: newCandlesSaved,
         latestDate: validCandles[validCandles.length - 1].parsedDate.toISOString(),
       };
     } catch (error) {

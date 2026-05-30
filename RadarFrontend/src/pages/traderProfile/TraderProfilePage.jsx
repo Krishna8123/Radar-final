@@ -449,17 +449,42 @@ const TraderProfilePage = ({ embedded = false } = {}) => {
           </article>
 
           <article className="profile-panel">
-            <h2>Your Watchlist Snapshot</h2>
+            <div className="profile-panel-header">
+              <h2>Your Watchlist Snapshot</h2>
+              {watchlist.length > 0 && (
+                <span className={`profile-status-indicator ${
+                  watchlist.every(item => item.priceSource === 'fallback' || !item.price) ? 'unavailable' :
+                  watchlist.some(item => item.isLive || item.priceSource === 'live') ? 'live' : 'stale'
+                }`}>
+                  {
+                    watchlist.every(item => item.priceSource === 'fallback' || !item.price) ? '✕ Unavailable' :
+                    watchlist.some(item => item.isLive || item.priceSource === 'live') ? '● Live' : '○ Cached'
+                  }
+                </span>
+              )}
+            </div>
             {watchlist.length === 0 ? (
               <p className="profile-empty"><Zap size={18} /> Your watchlist is empty.</p>
             ) : (
               <div className="profile-watchlist">
-                {watchlist.map((item) => (
-                  <div className="profile-watch-row" key={item.symbol}>
-                    <span>{String(item.symbol || '').replace(/\.(NS|BO)$/i, '')}</span>
-                    <strong>{Number(item.price) ? Number(item.price).toFixed(2) : 'N/A'}</strong>
-                  </div>
-                ))}
+                {watchlist.map((item) => {
+                  const isFallback = item.priceSource === 'fallback' || !item.price;
+                  const isLive = !isFallback && (item.isLive || item.priceSource === 'live');
+                  return (
+                    <div className="profile-watch-row" key={item.symbol}>
+                      <div className="profile-watch-symbol-container">
+                        <span 
+                          className={`profile-watch-dot ${isFallback ? 'unavailable' : isLive ? 'live' : 'stale'}`} 
+                          title={isFallback ? 'Price Unavailable' : isLive ? 'Live Price' : 'Cached Price'} 
+                        />
+                        <span>{String(item.symbol || '').replace(/\.(NS|BO)$/i, '')}</span>
+                      </div>
+                      <strong className={isFallback ? 'profile-watch-price-unavailable' : ''}>
+                        {isFallback ? 'Unavailable' : Number(item.price).toFixed(2)}
+                      </strong>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </article>

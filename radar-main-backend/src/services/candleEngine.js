@@ -115,7 +115,14 @@ const saveCandlesToDB = async (symbol, interval, candles, source) => {
     for (const c of candles) {
         const d = getCandleDate(c);
         if (d && c.open != null && c.high != null && c.low != null && c.close != null) {
-            validCandles.push({ ...c, parsedDate: d });
+            validCandles.push({
+                ...c,
+                timestamp: d,
+                symbol: cleanSym,
+                exchange,
+                timeframe,
+                source
+            });
         }
     }
 
@@ -124,44 +131,12 @@ const saveCandlesToDB = async (symbol, interval, candles, source) => {
         return;
     }
 
-    const timestamps = validCandles.map(c => c.parsedDate);
-    const minDate = new Date(Math.min(...timestamps.map(t => t.getTime())));
-    const maxDate = new Date(Math.max(...timestamps.map(t => t.getTime())));
-
-    // Check for existing records in MongoDB within range to avoid duplicates
-    const existingDocs = await OHLC.find({
-      symbol: cleanSym,
-      exchange,
-      timeframe,
-      timestamp: { $gte: minDate, $lte: maxDate }
-    }).select('timestamp').lean();
-
-    const existingTimes = new Set(existingDocs.map(d => new Date(d.timestamp).getTime()));
-
-    const newDocs = [];
-    for (const c of validCandles) {
-      const tMs = c.parsedDate.getTime();
-      if (!existingTimes.has(tMs)) {
-        newDocs.push({
-          timestamp: c.parsedDate,
-          symbol: cleanSym,
-          exchange,
-          timeframe,
-          open: Number(c.open),
-          high: Number(c.high),
-          low: Number(c.low),
-          close: Number(c.close),
-          volume: Number(c.volume || 0),
-          source
-        });
-      }
-    }
-
-    if (newDocs.length > 0) {
-      await OHLC.insertMany(newDocs, { ordered: false });
-      logger.info(`[Candle Engine DB] Saved ${newDocs.length} new OHLC documents for ${cleanSym} (${timeframe}) from ${source}`);
+    const ohlcService = require('./ohlcService');
+    const result = await ohlcService.bulkInsertOHLC(validCandles);
+    if (result.success && result.count > 0) {
+        logger.info(`[Candle Engine DB] Saved ${result.count} new OHLC documents for ${cleanSym} (${timeframe}) from ${source}`);
     } else {
-      logger.info(`[Candle Engine DB] No new OHLC documents needed for ${cleanSym} (${timeframe})`);
+        logger.info(`[Candle Engine DB] No new OHLC documents needed for ${cleanSym} (${timeframe})`);
     }
   } catch (err) {
     logger.error(`[Candle Engine DB Error] Failed to save candles: ${err.message}`);

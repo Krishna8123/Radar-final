@@ -575,19 +575,69 @@ const getUnifiedStockData = async (req, res) => {
         };
 
         const priceNum = Number(quote.price || 100);
-        const openInterest = Math.round((quote.volume || 1000000) * 0.15);
-        const changeInOi = (quote.changePercent || 0) * 1.25 + (toSeed(cleanSymbol) % 7) - 3;
-        const pcr = 0.6 + ((technicals.rsi || 50) / 100) * 0.8 + ((toSeed(cleanSymbol) % 4) * 0.1);
-        const maxPain = Math.round(priceNum / 10) * 10;
+        let openInterest = Math.round((quote.volume || 1000000) * 0.15);
+        let changeInOi = (quote.changePercent || 0) * 1.25 + (toSeed(cleanSymbol) % 7) - 3;
+        let pcr = 0.6 + ((technicals.rsi || 50) / 100) * 0.8 + ((toSeed(cleanSymbol) % 4) * 0.1);
+        let maxPain = Math.round(priceNum / 10) * 10;
         let futuresBias = "Neutral";
-        if (quote.changePercent > 0.5 && changeInOi > 0) futuresBias = "Long Buildup";
-        else if (quote.changePercent > 0.5 && changeInOi < 0) futuresBias = "Short Covering";
-        else if (quote.changePercent < -0.5 && changeInOi > 0) futuresBias = "Short Buildup";
-        else if (quote.changePercent < -0.5 && changeInOi < 0) futuresBias = "Long Unwinding";
+
+        try {
+            const optionsService = require('../services/optionsService');
+            const chain = await optionsService.getOptionsChain(cleanSymbol).catch(() => null);
+            if (chain && chain.calls && chain.puts && chain.calls.length > 0) {
+                const totalCallOI = chain.calls.reduce((sum, c) => sum + (c.oi || 0), 0);
+                const totalPutOI = chain.puts.reduce((sum, p) => sum + (p.oi || 0), 0);
+                
+                if (totalCallOI > 0) {
+                    pcr = Number((totalPutOI / totalCallOI).toFixed(2));
+                }
+                if (totalCallOI + totalPutOI > 0) {
+                    openInterest = totalCallOI + totalPutOI;
+                }
+
+                const strikes = chain.strikes || [];
+                let minPain = Infinity;
+                let bestStrike = maxPain;
+                for (const strike of strikes) {
+                    let totalPain = 0;
+                    for (const c of chain.calls) {
+                        if (strike > c.strike) {
+                            totalPain += (strike - c.strike) * (c.oi || 0);
+                        }
+                    }
+                    for (const p of chain.puts) {
+                        if (strike < p.strike) {
+                            totalPain += (p.strike - strike) * (p.oi || 0);
+                        }
+                    }
+                    if (totalPain < minPain) {
+                        minPain = totalPain;
+                        bestStrike = strike;
+                    }
+                }
+                maxPain = bestStrike;
+
+                if (quote.changePercent > 0.5) {
+                    futuresBias = pcr < 0.8 ? "Long Buildup" : "Short Covering";
+                } else if (quote.changePercent < -0.5) {
+                    futuresBias = pcr > 1.2 ? "Short Buildup" : "Long Unwinding";
+                }
+            }
+        } catch (err) {
+            console.warn('[Unified Stock Engine] Real derivatives calculation failed, using fallback:', err.message);
+        }
 
         const deliveryPercent = Math.max(15, Math.min(95, 35 + (toSeed(cleanSymbol) % 31) + (quote.changePercent > 0 ? 5 : -5)));
         const blockTrades = Math.round((quote.volume || 100000) * 0.005 / (100 + (toSeed(cleanSymbol) % 500)));
-        const relativeVolume = technicals.indicators?.rvol || 1.15;
+        
+        let relativeVolume = 1.15;
+        if (candles && candles.length >= 20) {
+            const last20 = candles.slice(-20);
+            const avgVol = last20.reduce((sum, c) => sum + (c.volume || 0), 0) / 20;
+            if (avgVol > 0) {
+                relativeVolume = Number((quote.volume / avgVol).toFixed(2));
+            }
+        }
         const volumeSpike = relativeVolume > 1.4 ? "High Vol Spike" : "Muted";
         const accDist = (quote.price > quote.prevClose) ? "Accumulation" : "Distribution";
 

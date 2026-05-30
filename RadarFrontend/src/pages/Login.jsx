@@ -73,30 +73,7 @@ export default function Login() {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    setErrors({});
-    try {
-      const guestId = Math.floor(100000 + Math.random() * 900000);
-      const guestUsername = `guest_${guestId}`;
-      const guestEmail = `guest_${guestId}@radar.com`;
-      const guestPassword = `GuestPass123!`; // satisfies mix of letters, numbers, and symbols
 
-      const res = await api.post('/auth/register', {
-        username: guestUsername,
-        email: guestEmail,
-        password: guestPassword,
-      });
-
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('userEmail', res.data.email || guestEmail);
-      localStorage.setItem('user', JSON.stringify({ username: res.data.username, email: res.data.email || guestEmail }));
-      window.location.href = '/dashboard';
-    } catch (error) {
-      setLoading(false);
-      setErrors({ general: error.response?.data?.error || 'Guest Access failed. Please try signing up manually.' });
-    }
-  };
 
   return (
     <AuthLayout>
@@ -188,16 +165,6 @@ export default function Login() {
               Sign in with Google
             </motion.button>
 
-            <motion.button
-              whileHover={{ y: -2, shadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
-              whileTap={{ scale: 0.99 }}
-              type="button"
-              disabled={loading}
-              onClick={handleGuestLogin}
-              className="w-full flex items-center justify-center gap-3 py-4 border border-[#10706B]/25 rounded-xl hover:bg-[#10706B]/5 transition-all bg-white shadow-sm font-bold text-[#10706B] text-sm"
-            >
-              {loading ? 'Entering Guest Mode...' : 'Explore as Guest (Instant Access)'}
-            </motion.button>
           </div>
 
           <div className="text-center pt-2">

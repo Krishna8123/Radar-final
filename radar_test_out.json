@@ -1,0 +1,21 @@
+{
+  "symbol": "NIFTY",
+  "quoteSource": "simulated",
+  "indicators": {
+    "rsi": 68.2,
+    "macd": 154.57,
+    "macdSignal": 152.22,
+    "macdHistogram": 2.35,
+    "ema20": 24372.59,
+    "ema50": 24203.3,
+    "atr": 266.48,
+    "momentum": 0.69,
+    "momentumScore": 67,
+    "trendStrength": 88,
+    "volumeShock": 0.25,
+    "support": 23837.69,
+    "resistance": 24762.7,
+    "breakout": false,
+    "bias": "bullish"
+  }
+}

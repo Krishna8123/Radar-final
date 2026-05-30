@@ -41,6 +41,7 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
     const [stock, setStock] = useState({ symbol, price: 0, changePercent: 0, name: '' });
     const [quickWatchlist, setQuickWatchlist] = useState([]);
     const [marketDepth, setMarketDepth] = useState({ bids: [], asks: [] });
+    const [technicalSummary, setTechnicalSummary] = useState(null);
 
     const isPositive = Number(stock.changePercent || 0) >= 0;
 
@@ -52,7 +53,8 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
             api.get(`/market?symbols=${encodeURIComponent(symbol)}`),
             api.get('/watchlist', { params: { mode: 'trader' } }),
             api.get(`/market/depth?symbol=${encodeURIComponent(symbol)}`),
-        ]).then(([mktRes, wlRes, depthRes]) => {
+            api.get(`/technical/summary/stock/${encodeURIComponent(symbol)}`),
+        ]).then(([mktRes, wlRes, depthRes, techRes]) => {
             if (!active) return;
 
             // Stock quote
@@ -60,7 +62,7 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
             const mkt = Array.isArray(mktArr) ? mktArr[0] : mktArr;
             if (mkt) {
                 const price = Number(mkt.price ?? mkt.ltp ?? 0);
-                setStock({ symbol: symbol.replace(/\.(NS|BO)$/i, ''), name: mkt.name ?? mkt.companyName ?? symbol, price, changePercent: Number(mkt.changePercent ?? mkt.pChange ?? 0), dayHigh: mkt.dayHigh, dayLow: mkt.dayLow, volume: mkt.volume, vwap: mkt.vwap });
+                setStock({ symbol: symbol.replace(/\.(NS|BO)$/i, ''), name: mkt.name ?? mkt.companyName ?? symbol, price, changePercent: Number(mkt.changePercent ?? mkt.pChange ?? 0), open: mkt.open, dayHigh: mkt.dayHigh, dayLow: mkt.dayLow, volume: mkt.volume, vwap: mkt.vwap });
                 setPriceInput(String(price));
             }
 
@@ -106,6 +108,11 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
             if (depthRes.status === 'fulfilled') {
                 const d = depthRes.value?.data?.data ?? depthRes.value?.data;
                 if (d?.bids && d?.asks) setMarketDepth(d);
+            }
+
+            // Tech Summary
+            if (techRes && techRes.status === 'fulfilled') {
+                setTechnicalSummary(techRes.value?.data?.data ?? techRes.value?.data);
             }
 
             setIsLoading(false);
@@ -216,19 +223,27 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
                         <div className="flex items-center gap-6">
                             <div>
                                 <div className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Open</div>
-                                <div className="text-sm font-semibold text-white mt-0.5">₹{Number(stock.price * 0.99).toFixed(2)}</div>
+                                <div className="text-sm font-semibold text-white mt-0.5">
+                                    {stock.open ? `₹${Number(stock.open).toFixed(2)}` : 'Unavailable'}
+                                </div>
                             </div>
                             <div>
                                 <div className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">High</div>
-                                <div className="text-sm font-semibold text-emerald-400 mt-0.5">₹{Number(stock.price * 1.02).toFixed(2)}</div>
+                                <div className="text-sm font-semibold text-emerald-400 mt-0.5">
+                                    {stock.dayHigh ? `₹${Number(stock.dayHigh).toFixed(2)}` : 'Unavailable'}
+                                </div>
                             </div>
                             <div>
                                 <div className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Low</div>
-                                <div className="text-sm font-semibold text-rose-400 mt-0.5">₹{Number(stock.price * 0.98).toFixed(2)}</div>
+                                <div className="text-sm font-semibold text-rose-400 mt-0.5">
+                                    {stock.dayLow ? `₹${Number(stock.dayLow).toFixed(2)}` : 'Unavailable'}
+                                </div>
                             </div>
                             <div>
                                 <div className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Volume</div>
-                                <div className="text-sm font-semibold text-white mt-0.5 font-mono">3.2M</div>
+                                <div className="text-sm font-semibold text-white mt-0.5 font-mono">
+                                    {stock.volume ? (stock.volume >= 1e6 ? `${(stock.volume / 1e6).toFixed(2)}M` : stock.volume.toLocaleString('en-IN')) : 'Unavailable'}
+                                </div>
                             </div>
                         </div>
                     </AntigravityCard>
@@ -240,6 +255,7 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
                                 symbol={stock.symbol} 
                                 price={stock.price} 
                                 isPositive={isPositive}
+                                technicalSummary={technicalSummary}
                             />
                         </div>
                     </AntigravityCard>
@@ -410,10 +426,10 @@ export default function TradeTerminalPage({ overrideSymbol, onBack }) {
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Quick Stats</h3>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             {[
-                                { label: 'Volume', val: '4.2M' },
-                                { label: 'VWAP', val: '₹2,980.15' },
-                                { label: 'Day High', val: '₹3,005.00' },
-                                { label: 'Day Low', val: '₹2,965.40' },
+                                { label: 'Volume', val: stock.volume ? (stock.volume >= 1e6 ? `${(stock.volume / 1e6).toFixed(2)}M` : stock.volume.toLocaleString('en-IN')) : 'Unavailable' },
+                                { label: 'VWAP', val: stock.vwap ? `₹${Number(stock.vwap).toFixed(2)}` : 'Unavailable' },
+                                { label: 'Day High', val: stock.dayHigh ? `₹${Number(stock.dayHigh).toFixed(2)}` : 'Unavailable' },
+                                { label: 'Day Low', val: stock.dayLow ? `₹${Number(stock.dayLow).toFixed(2)}` : 'Unavailable' },
                             ].map(stat => (
                                 <div key={stat.label}>
                                     <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{stat.label}</div>

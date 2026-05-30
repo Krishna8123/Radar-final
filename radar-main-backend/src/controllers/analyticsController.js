@@ -18,12 +18,30 @@ const getPreMarketPulse = async (req, res) => {
             price: s.price,
         }));
 
-        const volumeShockers = sortedByChangeDesc.slice(0, 6).map((s, index) => ({
-            symbol: s.symbol,
-            volume: `${15 + index}M`,
-            avgVolume: `${9 + index}M`,
-            shock: `${(1.3 + (index * 0.1)).toFixed(1)}x`,
-        }));
+        const volumeShockers = [...stocks]
+            .map(s => {
+                const vol = Number(s.volume) || 0;
+                const avgVol = Number(s.averageVolume) || 0;
+                const shockRatio = avgVol > 0 ? (vol / avgVol) : 1.0;
+                return {
+                    symbol: s.symbol,
+                    volume: vol >= 1e6 ? `${(vol / 1e6).toFixed(2)}M` : vol.toLocaleString(),
+                    avgVolume: avgVol > 0 ? (avgVol >= 1e6 ? `${(avgVol / 1e6).toFixed(2)}M` : avgVol.toLocaleString()) : 'Unavailable',
+                    shock: avgVol > 0 ? `${shockRatio.toFixed(1)}x` : 'Unavailable',
+                    shockRatio,
+                    vol
+                };
+            })
+            .sort((a, b) => {
+                if (a.shock !== 'Unavailable' && b.shock !== 'Unavailable') {
+                    return b.shockRatio - a.shockRatio;
+                }
+                if (a.shock !== 'Unavailable') return -1;
+                if (b.shock !== 'Unavailable') return 1;
+                return b.vol - a.vol;
+            })
+            .slice(0, 6)
+            .map(({ symbol, volume, avgVolume, shock }) => ({ symbol, volume, avgVolume, shock }));
 
         res.json({
             gapUp,
@@ -58,22 +76,7 @@ const getSectorHeatmap = async (req, res) => {
             children: children.slice(0, 5) // Limit to top 5 stocks per sector for rendering clarity
         }));
 
-        res.json(heatmapData.length ? heatmapData : [
-            {
-                name: "Technology",
-                children: [
-                    { name: "TCS", change: 0.5 },
-                    { name: "INFY", change: 1.2 }
-                ]
-            },
-            {
-                name: "Finance",
-                children: [
-                    { name: "HDFCBANK", change: -0.2 },
-                    { name: "SBIN", change: 0.8 }
-                ]
-            }
-        ]);
+        res.json(heatmapData);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server Error' });

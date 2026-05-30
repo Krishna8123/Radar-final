@@ -139,17 +139,21 @@ const addToWatchlist = async (req, res) => {
 
 const removeFromWatchlist = async (req, res) => {
     const { id, symbol: rawSymbol } = req.params;
-    // Accept either "RELIANCE" or "RELIANCE.NS" from the frontend
+    if (!rawSymbol) return res.status(400).json({ error: "Symbol is required" });
     const normalized = normalizeSymbolForStorage(rawSymbol);
     const plain = String(rawSymbol || '').trim().toUpperCase();
+    const baseClean = (s) => String(s || '').trim().split('.')[0].toUpperCase();
+    const targetBase = baseClean(rawSymbol);
 
     try {
         const watchlist = await Watchlist.findOne({ _id: id, userId: req.user._id });
         if (!watchlist) return res.status(404).json({ error: "Watchlist not found" });
 
-        watchlist.items = watchlist.items.filter(item =>
-            item.symbol !== normalized && item.symbol !== plain
-        );
+        watchlist.items = watchlist.items.filter(item => {
+            const itemBase = baseClean(item.symbol);
+            const itemFull = String(item.symbol || '').trim().toUpperCase();
+            return itemFull !== normalized && itemFull !== plain && itemBase !== targetBase;
+        });
         await watchlist.save();
         try { await profileCache.invalidate(req.user._id); } catch (_) {}
         res.json(watchlist);
@@ -204,13 +208,19 @@ const addToDefaultWatchlist = async (req, res) => {
 
 const removeFromDefaultWatchlist = async (req, res) => {
     const { symbol: rawSymbol } = req.params;
+    if (!rawSymbol) return res.status(400).json({ error: "Symbol is required" });
     const normalized = normalizeSymbolForStorage(rawSymbol);
     const plain = String(rawSymbol || '').trim().toUpperCase();
+    const baseClean = (s) => String(s || '').trim().split('.')[0].toUpperCase();
+    const targetBase = baseClean(rawSymbol);
+
     try {
         const watchlist = await getDefaultWatchlist(req.user._id, req.query.mode || 'trader');
-        watchlist.items = watchlist.items.filter(item =>
-            item.symbol !== normalized && item.symbol !== plain
-        );
+        watchlist.items = watchlist.items.filter(item => {
+            const itemBase = baseClean(item.symbol);
+            const itemFull = String(item.symbol || '').trim().toUpperCase();
+            return itemFull !== normalized && itemFull !== plain && itemBase !== targetBase;
+        });
         await watchlist.save();
         try { await profileCache.invalidate(req.user._id); } catch (_) {}
         res.json(watchlist);

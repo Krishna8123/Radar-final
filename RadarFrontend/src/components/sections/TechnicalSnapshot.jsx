@@ -1,22 +1,24 @@
 import React from 'react';
-import { Activity, Compass, TrendingUp } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 export default function TechnicalSnapshot({ techData, currentPrice }) {
-  const rsi = techData?.rsi ?? 52.4;
-  const macdHist = techData?.macd?.hist ?? 4.8;
-  const macdBias = techData?.macd?.signal ?? 'Neutral';
-  const atr = techData?.atr ?? 42.8;
-  const vwap = techData?.vwap ?? ((currentPrice || 0) * 1.002);
-  const emaTrend = techData?.emas?.cross ?? 'Bullish';
-  const rvol = techData?.rvol ?? 1.45;
+  const rsi = techData?.rsi;
+  const macdHist = techData?.macd?.hist;
+  const macdBias = techData?.macd?.signal ?? '—';
+  const atr = techData?.atr;
+  const vwap = techData?.vwap;
+  const emaTrend = techData?.emas?.cross ?? '—';
+  const rvol = techData?.rvol;
 
   const getRsiClass = (v) => {
+    if (v == null) return 'text-slate-400 bg-slate-900/50';
     if (v > 65) return 'text-[#00ff9d] bg-[#00ff9d]/5';
     if (v < 35) return 'text-[#ff4d6d] bg-[#ff4d6d]/5';
     return 'text-[#facc15] bg-[#facc15]/5';
   };
 
   const getRsiLabel = (v) => {
+    if (v == null) return '—';
     if (v > 65) return 'OVERBOUGHT';
     if (v < 35) return 'OVERSOLD';
     return 'NEUTRAL';
@@ -33,7 +35,7 @@ export default function TechnicalSnapshot({ techData, currentPrice }) {
         {/* RSI */}
         <div className="bg-[#0b1120] p-4 rounded-lg border border-white/[0.04] flex flex-col justify-between h-24">
           <span className="text-[#7c8db5] text-[10px] uppercase font-sans font-semibold">RSI (14)</span>
-          <span className="text-xl font-bold text-white">{Number(rsi).toFixed(2)}</span>
+          <span className="text-xl font-bold text-white">{rsi != null ? Number(rsi).toFixed(2) : '—'}</span>
           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded text-center ${getRsiClass(rsi)}`}>
             {getRsiLabel(rsi)}
           </span>
@@ -42,7 +44,7 @@ export default function TechnicalSnapshot({ techData, currentPrice }) {
         {/* MACD Bias */}
         <div className="bg-[#0b1120] p-4 rounded-lg border border-white/[0.04] flex flex-col justify-between h-24">
           <span className="text-[#7c8db5] text-[10px] uppercase font-sans font-semibold">MACD Bias</span>
-          <span className="text-xl font-bold text-white">+{macdHist}</span>
+          <span className="text-xl font-bold text-white">{macdHist != null ? (macdHist > 0 ? `+${macdHist}` : macdHist) : '—'}</span>
           <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-center text-[#00ff9d] bg-[#00ff9d]/5 uppercase">
             {macdBias}
           </span>
@@ -51,7 +53,7 @@ export default function TechnicalSnapshot({ techData, currentPrice }) {
         {/* ATR */}
         <div className="bg-[#0b1120] p-4 rounded-lg border border-white/[0.04] flex flex-col justify-between h-24">
           <span className="text-[#7c8db5] text-[10px] uppercase font-sans font-semibold">ATR (14)</span>
-          <span className="text-xl font-bold text-white">₹{atr}</span>
+          <span className="text-xl font-bold text-white">{atr != null ? `₹${atr}` : '—'}</span>
           <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-center text-[#7c8db5] bg-white/5 uppercase">
             Volatility
           </span>
@@ -60,11 +62,13 @@ export default function TechnicalSnapshot({ techData, currentPrice }) {
         {/* VWAP */}
         <div className="bg-[#0b1120] p-4 rounded-lg border border-white/[0.04] flex flex-col justify-between h-24">
           <span className="text-[#7c8db5] text-[10px] uppercase font-sans font-semibold">VWAP Position</span>
-          <span className="text-sm font-bold text-white truncate">₹{Number(vwap).toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+          <span className="text-sm font-bold text-white truncate">
+            {vwap != null ? `₹${Number(vwap).toLocaleString('en-IN', { maximumFractionDigits: 1 })}` : '—'}
+          </span>
           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded text-center uppercase ${
-            currentPrice >= vwap ? 'text-[#00ff9d] bg-[#00ff9d]/5' : 'text-[#ff4d6d] bg-[#ff4d6d]/5'
+            (currentPrice != null && vwap != null) ? (currentPrice >= vwap ? 'text-[#00ff9d] bg-[#00ff9d]/5' : 'text-[#ff4d6d] bg-[#ff4d6d]/5') : 'text-slate-400 bg-slate-900/50'
           }`}>
-            {currentPrice >= vwap ? 'ABOVE VWAP' : 'BELOW VWAP'}
+            {(currentPrice != null && vwap != null) ? (currentPrice >= vwap ? 'ABOVE VWAP' : 'BELOW VWAP') : '—'}
           </span>
         </div>
 
@@ -73,16 +77,16 @@ export default function TechnicalSnapshot({ techData, currentPrice }) {
           <span className="text-[#7c8db5] text-[10px] uppercase font-sans font-semibold">EMA Trend</span>
           <span className="text-xl font-bold text-white">{emaTrend}</span>
           <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-center text-[#00ff9d] bg-[#00ff9d]/5 uppercase">
-            Bullish Cross
+            Trend Cross
           </span>
         </div>
 
         {/* Relative Volume */}
         <div className="bg-[#0b1120] p-4 rounded-lg border border-white/[0.04] flex flex-col justify-between h-24">
           <span className="text-[#7c8db5] text-[10px] uppercase font-sans font-semibold">Relative Vol</span>
-          <span className="text-xl font-bold text-white">{rvol}x</span>
+          <span className="text-xl font-bold text-white">{rvol != null ? `${rvol}x` : '—'}</span>
           <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-center text-[#00d4ff] bg-[#00d4ff]/5 uppercase">
-            {rvol > 1.2 ? 'Active' : 'Moderate'}
+            {rvol != null ? (rvol > 1.2 ? 'Active' : 'Moderate') : '—'}
           </span>
         </div>
       </div>

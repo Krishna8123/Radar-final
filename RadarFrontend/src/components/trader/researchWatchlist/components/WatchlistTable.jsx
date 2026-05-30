@@ -118,10 +118,25 @@ const WatchlistTable = ({ rows, selectedSymbol, onSelect, onOpen, onRemove, onAl
                 </div>
 
                 {hasError ? (
-                  <div className="flex-grow flex items-center gap-2.5 text-sm font-mono text-rose-400/80 bg-rose-950/10 border border-rose-950/30 rounded-xl px-4 py-3 mr-4">
-                    <WifiOff size={15} className="animate-pulse" />
-                    <span>Awaiting market feed... ({row.error || 'Connection error'})</span>
-                  </div>
+                  <>
+                    <div className="flex-grow flex items-center gap-2.5 text-sm font-mono text-rose-400/80 bg-rose-950/10 border border-rose-950/30 rounded-xl px-4 py-3 mr-4 min-w-0">
+                      <WifiOff size={15} className="animate-pulse flex-shrink-0" />
+                      <span className="truncate">Awaiting market feed... ({row.error || 'Connection error'})</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 mr-4">
+                      <button
+                        type="button"
+                        title="Remove from watchlist"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRemove(row.symbol);
+                        }}
+                        className="grid h-10 w-10 place-items-center rounded-xl border border-rose-400/20 bg-rose-500/10 text-rose-300 hover:border-rose-400/50 hover:bg-rose-500/25 transition-all cursor-pointer"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </>
                 ) : (
                   <>
                     {/* 2. CENTER SECTION (Price & Sparkline) */}

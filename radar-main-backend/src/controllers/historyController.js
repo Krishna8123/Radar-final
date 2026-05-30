@@ -15,7 +15,10 @@ const EXCHANGE_FOR_TYPE = {
 // Strip Yahoo Finance suffixes before querying DB (symbols are stored without them)
 const toDbSymbol = (symbol, type) => {
     const upper = String(symbol || '').toUpperCase();
-    if (type === 'CRYPTO') return upper; // stored as BTC-USD
+    if (type === 'CRYPTO') {
+        const clean = upper.replace(/USDT$/i, '').replace(/-USD$/i, '');
+        return `${clean}-USD`;
+    }
     if (type === 'FOREX')  return upper; // stored as USDINR=X
     // Equity / Index: remove .NS .BO suffix; ^ prefix kept for indices
     return upper.replace(/\.(NS|BO)$/i, '');
@@ -39,10 +42,16 @@ const tryDbFirst = async (symbol, type, interval) => {
 };
 
 const getHistory = async (req, res) => {
-    const { symbol, type, interval = '1D' } = req.query;
+    let { symbol, type, interval = '1D' } = req.query;
     const strictLive = String(req.query.strictLive || '').toLowerCase() === 'true';
 
     if (!symbol) return res.status(400).json({ error: 'Symbol required' });
+
+    const cleanSym = String(symbol).trim().toUpperCase().replace(/\.(NS|BO)$/i, '').replace(/USDT$/i, '').replace(/-USD$/i, '');
+    const knownCryptos = ['BTC', 'ETH', 'SOL', 'ADA', 'XRP', 'DOGE', 'DOT', 'BNB', 'MATIC', 'AVAX', 'LINK', 'LTC', 'SHIB', 'TRX', 'NEAR', 'UNI', 'ATOM', 'FIL'];
+    if (knownCryptos.includes(cleanSym) || cleanSym === 'BITCOIN' || cleanSym === 'ETHEREUM') {
+        type = 'CRYPTO';
+    }
 
     let rawData = [];
 

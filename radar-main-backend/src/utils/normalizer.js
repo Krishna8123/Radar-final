@@ -31,6 +31,7 @@ const normalizeStock = (data) => {
         details: stock.details,
         financials: stock.financials,
         volume: stock.volume || 0,
+        averageVolume: stock.averageVolume || 0,
         dayLow: stock.dayLow || 0,
         dayHigh: stock.dayHigh || 0
     }));

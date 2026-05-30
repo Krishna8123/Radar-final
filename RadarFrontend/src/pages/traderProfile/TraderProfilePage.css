@@ -255,6 +255,10 @@
   color: #86efac;
 }
 
+.profile-watch-row strong.profile-watch-price-unavailable {
+  color: #94a3b8;
+}
+
 .profile-news-list a {
   display: grid;
   gap: 6px;
@@ -630,3 +634,62 @@
   box-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
 }
 
+/* Live/Stale indicator styles */
+.profile-status-indicator {
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-status-indicator.live {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.profile-status-indicator.stale {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.profile-watch-symbol-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-watch-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.profile-watch-dot.live {
+  background-color: #10b981;
+  color: rgba(16, 185, 129, 0.6);
+}
+
+.profile-watch-dot.stale {
+  background-color: #f59e0b;
+  color: rgba(245, 158, 11, 0.6);
+}
+
+.profile-watch-dot.unavailable {
+  background-color: #ef4444;
+  color: rgba(239, 68, 68, 0.6);
+}
+
+.profile-status-indicator.unavailable {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
