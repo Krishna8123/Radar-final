@@ -36,6 +36,7 @@ jobs:
           echo "TWELVE_API_KEY=${{ secrets.TWELVE_API_KEY }}" >> .env
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
 
+      
       - name: Backend Check
         run: echo "Backend setup successful"
 
